@@ -1,0 +1,54 @@
+app:
+  name: "AiOpsHub Backend"
+  mode: "release"
+
+server:
+  port: "8080"
+  read_timeout: "30s"
+  write_timeout: "30s"
+
+database:
+  host: "postgres.production"
+  port: 5432
+  user: "aiops_prod"
+  password: "change-this-password"
+  dbname: "aiopsdb_prod"
+
+redis:
+  host: "redis.production"
+  port: 6379
+  password: "change-this-password"
+  db: 0
+
+temporal:
+  host: "temporal.production"
+  port: 7233
+  namespace: "production"
+
+llm:
+  provider: "openai"
+  model: "gpt-4"
+  api_key: "your-production-api-key"
+  temperature: 0.3
+  max_tokens: 4000
+  base_url: "https://api.openai.com/v1"
+
+milvus:
+  host: "milvus.production"
+  port: 19530
+  collection: "aiops_knowledge_prod"
+
+prometheus:
+  url: "http://prometheus.production:9090"
+
+kubernetes:
+  enabled: true
+  kubeconfig: "/etc/aiops/kubeconfig"
+
+jwt:
+  secret: "change-this-to-a-strong-random-secret"
+  expire: "12h"
+
+log:
+  level: "info"
+  format: "json"

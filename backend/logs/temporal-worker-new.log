@@ -1,0 +1,77 @@
+2026-06-24T23:30:51.164+0800	[34mINFO[0m	logger/logger.go:61	Created Aliyun Bailian LLM with model: qwen-turbo at https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created agent: MonitorAgent (monitor-agent-001) with provider: aliyun_bailian
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Registered agent: MonitorAgent (monitor-agent-001)
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created Aliyun Bailian LLM with model: qwen-turbo at https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created agent: AnalysisAgent (analysis-agent-001) with provider: aliyun_bailian
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Registered agent: AnalysisAgent (analysis-agent-001)
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created Aliyun Bailian LLM with model: qwen-turbo at https://dashscope.aliyuncs.com/compatible-mode/v1
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created agent: RemediationAgent (remediation-agent-001) with provider: aliyun_bailian
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Registered agent: RemediationAgent (remediation-agent-001)
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Created and registered 3 default agents with Aliyun Bailian
+2026-06-24T23:30:51.165+0800	[34mINFO[0m	logger/logger.go:61	Attempting to connect to Temporal Server at 192.168.100.10:7233 (namespace: default)
+2026/06/24 23:30:51 INFO  No logger configured for temporal client. Created default one.
+2026-06-24T23:30:51.599+0800	[34mINFO[0m	logger/logger.go:61	Successfully connected to Temporal Server at 192.168.100.10:7233
+2026-06-24T23:30:51.599+0800	[34mINFO[0m	logger/logger.go:61	Creating worker with taskQueue: aiops-task-queue
+2026-06-24T23:30:51.658+0800	[34mINFO[0m	logger/logger.go:61	Worker created and workflow/activity registered
+2026-06-24T23:30:51.658+0800	[34mINFO[0m	logger/logger.go:61	Starting Temporal Worker...
+2026/06/24 23:30:51 INFO  Started Worker Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@
+2026/06/24 23:31:04 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315063 RunID 019efa41-9b72-721f-b1c7-817eba0ab137 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:31:04.105+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:31:04.105+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026/06/24 23:31:06 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315066 RunID 019efa41-a685-752d-ab5d-8dcb6e6fc327 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:31:07.246+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:31:07.246+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:31:12.743+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026-06-24T23:31:13.676+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:33:04 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315184 RunID 019efa43-73c2-7228-95ae-9ac79a34905a Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:33:05.055+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:33:05.055+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:33:11.764+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:39:55 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315595 RunID 019efa49-b72c-7317-a893-367830d49ea0 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:39:55.497+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:39:55.497+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:40:02.890+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:40:14 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315614 RunID 019efa4a-01b3-7eaf-9dfd-c187d139a4c4 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:40:14.650+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:40:14.650+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:40:20.916+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:40:48 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315648 RunID 019efa4a-8880-7004-9fad-9cd74504873a Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:40:49.089+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:40:49.089+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:40:55.357+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:45:37 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315937 RunID 019efa4e-ef4a-7075-8aa7-e3d54842d27b Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:45:37.559+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:45:37.559+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:45:45.978+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:46:01 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782315961 RunID 019efa4f-4c14-76ea-aed9-835ac16c4ad6 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:46:01.319+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:46:01.319+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:46:08.675+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:48:35 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782316115 RunID 019efa51-a57f-7331-bf4f-e0630492e3bf Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:48:35.257+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:48:35.257+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:48:44.239+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/24 23:49:34 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782316174 RunID 019efa52-8ca5-7435-8327-988bb8dd98eb Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-24T23:49:34.437+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-24T23:49:34.437+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-24T23:49:42.172+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/25 00:04:02 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782317042 RunID 019efa5f-cd6d-7e62-9c2e-726b23a02edb Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-25T00:04:02.999+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-25T00:04:03.001+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-25T00:04:10.765+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/25 00:11:53 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-monitor-agent-001-1782317513 RunID 019efa66-fc7c-719a-947a-c3c314b8ad8b Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-25T00:11:53.838+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=monitor-agent-001, task_type=alert_analysis
+2026-06-25T00:11:53.838+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent executing task: alert_analysis
+2026-06-25T00:12:02.424+0800	[34mINFO[0m	logger/logger.go:61	Agent MonitorAgent completed task: alert_analysis
+2026/06/25 00:16:55 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-9e59cca1-73bc-4018-893a-d84b34389f12-1782317815 RunID 019efa6b-95e6-754a-aa40-024a53aeee8a Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-25T00:16:55.225+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=9e59cca1-73bc-4018-893a-d84b34389f12, task_type=alert_analysis
+2026-06-25T00:16:55.226+0800	[31mERROR[0m	logger/logger.go:69	Failed to get agent: agent not found: 9e59cca1-73bc-4018-893a-d84b34389f12
+2026-06-25T00:16:55.227+0800	[31mERROR[0m	logger/logger.go:69	Agent execution failed: agent not found: 9e59cca1-73bc-4018-893a-d84b34389f12
+2026/06/25 00:19:46 DEBUG ExecuteActivity Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkflowType AgentWorkflow WorkflowID workflow-9e59cca1-73bc-4018-893a-d84b34389f12-1782317986 RunID 019efa6e-3201-78d3-a082-95400ba21120 Attempt 1 ActivityID 5 ActivityType Execute
+2026-06-25T00:19:46.290+0800	[34mINFO[0m	logger/logger.go:61	Executing agent task: agent_id=9e59cca1-73bc-4018-893a-d84b34389f12, task_type=alert_analysis
+2026-06-25T00:19:46.291+0800	[31mERROR[0m	logger/logger.go:69	Failed to get agent: agent not found: 9e59cca1-73bc-4018-893a-d84b34389f12
+2026-06-25T00:19:46.291+0800	[31mERROR[0m	logger/logger.go:69	Agent execution failed: agent not found: 9e59cca1-73bc-4018-893a-d84b34389f12
+2026/06/25 00:21:06 INFO  Worker has been stopped. Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ Signal terminated
+2026/06/25 00:21:06 INFO  Stopped Worker Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@
+2026/06/25 00:21:06 WARN  Failed to poll for task. Namespace default TaskQueue aiops-task-queue WorkerID 38824@pengchunhuideMacBook-Air-3.local@ WorkerType WorkflowWorker Error worker stopping
+2026-06-25T00:21:06.494+0800	[34mINFO[0m	logger/logger.go:61	Temporal Worker started successfully (address: 192.168.100.10:7233, namespace: default, taskQueue: aiops-task-queue)

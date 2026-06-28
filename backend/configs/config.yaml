@@ -1,0 +1,70 @@
+app:
+  name: "AiOpsHub Backend"
+  mode: "debug"
+
+server:
+  port: "8080"
+  read_timeout: "10s"
+  write_timeout: "10s"
+
+database:
+  host: "192.168.100.10"
+  port: 5432
+  user: "aiops"
+  password: "aiops123"
+  dbname: "aiopsdb"
+
+redis:
+  host: "192.168.100.114"
+  port: 6379
+  password: "1qaz!QAZ"
+  db: 0
+  cluster_mode: true
+  cluster_nodes:
+    - "192.168.100.113:6379"
+    - "192.168.100.114:6379"
+    - "192.168.100.115:6379"
+    - "192.168.100.116:6379"
+    - "192.168.100.117:6379"
+    - "192.168.100.118:6379"
+
+temporal:
+  host: "192.168.100.10"
+  port: 7233
+  namespace: "default"
+  task_queue: "aiops-task-queue"
+
+llm:
+  provider: "aliyun_bailian"
+  model: "qwen-turbo"
+  api_key: "sk-086920878fb641a3bea1ce785eacb200"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  temperature: 0.7
+  max_tokens: 4000
+  enable_rag: true  # 启用RAG功能,自动从Milvus检索知识增强对话
+
+milvus:
+  host: "192.168.100.10"
+  port: 19530
+  collection: "aiops_knowledge"
+  
+embedding:
+  provider: "aliyun_bailian"
+  model: "text-embedding-v2"
+  api_key: "sk-086920878fb641a3bea1ce785eacb200"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+prometheus:
+  url: "http://localhost:9090"
+
+kubernetes:
+  enabled: false
+  kubeconfig: ""
+
+jwt:
+  secret: "aiops-jwt-secret-key-2024"
+  expire: "24h"
+
+log:
+  level: "debug"
+  format: "console"

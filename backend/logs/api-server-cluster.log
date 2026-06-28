@@ -1,0 +1,542 @@
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[148.468ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[102.526ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[111.481ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'agents'
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[51.263ms] [34;1m[rows:-][0m SELECT * FROM "agents" LIMIT 5
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[103.711ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'agents' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[106.961ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'agents'
+
+2026/06/24 23:17:26 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[89.980ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'agents'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[110.801ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[51.579ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'name') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[69.618ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'type') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.758ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'description') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[58.445ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'config') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.223ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.847ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[57.266ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'agents' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'agents' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[53.277ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.158ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[68.293ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'workflows'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[66.817ms] [34;1m[rows:-][0m SELECT * FROM "workflows" LIMIT 5
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.640ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'workflows' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[55.293ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'workflows'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.578ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'workflows'
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.957ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:27 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[54.435ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'name') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[76.518ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'description') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[55.959ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'definition') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[54.525ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[43.118ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.893ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflows' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflows' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[57.592ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[47.480ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.563ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions'
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[37.152ms] [34;1m[rows:-][0m SELECT * FROM "workflow_executions" LIMIT 5
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[83.440ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'workflow_executions' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[84.931ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'workflow_executions'
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.084ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'workflow_executions'
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.088ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[46.835ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'workflow_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.513ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[50.579ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'input') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[67.619ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'output') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:28 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[63.272ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'error') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.178ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'started_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.827ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'completed_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.226ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'workflow_executions' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'workflow_executions' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[92.094ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'workflow_executions' AND indexname = 'idx_workflow_executions_workflow_id' AND schemaname = CURRENT_SCHEMA()
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[41.495ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[44.084ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.601ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'alerts'
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[46.414ms] [34;1m[rows:-][0m SELECT * FROM "alerts" LIMIT 5
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[54.581ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'alerts' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.893ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'alerts'
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[42.837ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'alerts'
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[57.121ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[57.549ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'source') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.558ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'severity') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[59.239ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'title') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.598ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'description') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[62.567ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.669ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'raw_data') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:29 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[51.300ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.710ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'alerts' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'alerts' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[46.190ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[50.716ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[72.744ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges'
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[61.607ms] [34;1m[rows:-][0m SELECT * FROM "knowledges" LIMIT 5
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[95.530ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'knowledges' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[87.962ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'knowledges'
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.167ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'knowledges'
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.989ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[59.218ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'title') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[84.592ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'content') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[67.433ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'type') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[72.157ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'tags') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[60.388ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'vector_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.383ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[50.043ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'knowledges' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'knowledges' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[54.503ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[51.073ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[59.061ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'datasources'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.963ms] [34;1m[rows:-][0m SELECT * FROM "datasources" LIMIT 5
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[53.930ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'datasources' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.464ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'datasources'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.603ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'datasources'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[57.872ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[95.840ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'name') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[52.088ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'type') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[43.612ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'config') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[72.245ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.398ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.910ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'datasources' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'datasources' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.331ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[53.759ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[47.885ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'users'
+
+2026/06/24 23:17:31 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[42.911ms] [34;1m[rows:-][0m SELECT * FROM "users" LIMIT 5
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[74.855ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'users' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.717ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'users'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[55.681ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'users'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[61.211ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[96.386ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'username') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.295ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'email') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[50.761ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'password') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[56.253ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'role') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[44.269ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[47.734ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'users' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'users' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[42.758ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND table_type = 'BASE TABLE'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[48.884ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[59.691ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'aiopsdb' AND table_schema = CURRENT_SCHEMA() AND table_name = 'tools'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[63.782ms] [34;1m[rows:-][0m SELECT * FROM "tools" LIMIT 5
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[49.705ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'tools' AND constraint_type = 'UNIQUE'
+
+2026/06/24 23:17:32 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[125.047ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'aiopsdb' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'tools'
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[43.701ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'tools'
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[62.483ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[60.693ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'name') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[95.912ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'type') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[62.910ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'description') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[45.497ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'config') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[71.946ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'status') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[55.347ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'created_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+
+2026/06/24 23:17:33 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/database/database.go:61
+[0m[33m[55.727ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'tools' AND column_name = 'updated_at') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'tools' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+2026-06-24T23:17:33.519+0800	[34mINFO[0m	logger/logger.go:61	Database connected and migrated successfully
+2026-06-24T23:17:33.809+0800	[34mINFO[0m	logger/logger.go:61	Redis connected successfully
+2026/06/24 23:17:33 INFO  No logger configured for temporal client. Created default one.
+2026-06-24T23:17:34.036+0800	[34mINFO[0m	logger/logger.go:61	Temporal client connected: 192.168.100.10:7233
+2026-06-24T23:17:34.036+0800	[34mINFO[0m	logger/logger.go:61	Workflow client initialized
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /health                   --> main.registerRoutes.func1 (6 handlers)
+[GIN-debug] GET    /test/db                  --> github.com/aiops/AiOpsHub/backend/internal/handler.TestDB (6 handlers)
+[GIN-debug] POST   /test/user                --> github.com/aiops/AiOpsHub/backend/internal/handler.TestCreateUser (6 handlers)
+[GIN-debug] POST   /api/v1/auth/login        --> github.com/aiops/AiOpsHub/backend/internal/handler.Login (6 handlers)
+[GIN-debug] POST   /api/v1/auth/logout       --> github.com/aiops/AiOpsHub/backend/internal/handler.Logout (6 handlers)
+[GIN-debug] POST   /api/v1/auth/register     --> github.com/aiops/AiOpsHub/backend/internal/handler.Register (6 handlers)
+[GIN-debug] GET    /api/v1/agents            --> github.com/aiops/AiOpsHub/backend/internal/handler.ListAgents (7 handlers)
+[GIN-debug] GET    /api/v1/agents/:id        --> github.com/aiops/AiOpsHub/backend/internal/handler.GetAgent (7 handlers)
+[GIN-debug] POST   /api/v1/agents            --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateAgent (7 handlers)
+[GIN-debug] PUT    /api/v1/agents/:id        --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateAgent (7 handlers)
+[GIN-debug] DELETE /api/v1/agents/:id        --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteAgent (7 handlers)
+[GIN-debug] GET    /api/v1/agents/:id/config --> github.com/aiops/AiOpsHub/backend/internal/handler.GetAgentConfig (7 handlers)
+[GIN-debug] PUT    /api/v1/agents/:id/config --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateAgentConfig (7 handlers)
+[GIN-debug] GET    /api/v1/workflows         --> github.com/aiops/AiOpsHub/backend/internal/handler.ListWorkflows (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.GetWorkflow (7 handlers)
+[GIN-debug] POST   /api/v1/workflows         --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateWorkflow (7 handlers)
+[GIN-debug] PUT    /api/v1/workflows/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateWorkflow (7 handlers)
+[GIN-debug] DELETE /api/v1/workflows/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteWorkflow (7 handlers)
+[GIN-debug] POST   /api/v1/workflows/execute --> github.com/aiops/AiOpsHub/backend/internal/handler.ExecuteAgentWorkflow (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/:id/status --> github.com/aiops/AiOpsHub/backend/internal/handler.GetWorkflowStatus (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/:id/result --> github.com/aiops/AiOpsHub/backend/internal/handler.GetWorkflowResult (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/:id/executions --> github.com/aiops/AiOpsHub/backend/internal/handler.ListExecutions (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/executions/:execution_id --> github.com/aiops/AiOpsHub/backend/internal/handler.GetExecution (7 handlers)
+[GIN-debug] GET    /api/v1/workflows/executions/:execution_id/status --> github.com/aiops/AiOpsHub/backend/internal/handler.GetExecutionStatus (7 handlers)
+[GIN-debug] GET    /api/v1/knowledge         --> github.com/aiops/AiOpsHub/backend/internal/handler.ListKnowledge (7 handlers)
+[GIN-debug] GET    /api/v1/knowledge/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.GetKnowledge (7 handlers)
+[GIN-debug] POST   /api/v1/knowledge         --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateKnowledge (7 handlers)
+[GIN-debug] PUT    /api/v1/knowledge/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateKnowledge (7 handlers)
+[GIN-debug] DELETE /api/v1/knowledge/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteKnowledge (7 handlers)
+[GIN-debug] POST   /api/v1/knowledge/search  --> github.com/aiops/AiOpsHub/backend/internal/handler.SearchKnowledge (7 handlers)
+[GIN-debug] GET    /api/v1/datasources       --> github.com/aiops/AiOpsHub/backend/internal/handler.ListDatasources (7 handlers)
+[GIN-debug] GET    /api/v1/datasources/:id   --> github.com/aiops/AiOpsHub/backend/internal/handler.GetDatasource (7 handlers)
+[GIN-debug] POST   /api/v1/datasources       --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateDatasource (7 handlers)
+[GIN-debug] PUT    /api/v1/datasources/:id   --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateDatasource (7 handlers)
+[GIN-debug] DELETE /api/v1/datasources/:id   --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteDatasource (7 handlers)
+[GIN-debug] POST   /api/v1/datasources/:id/test --> github.com/aiops/AiOpsHub/backend/internal/handler.TestDatasource (7 handlers)
+[GIN-debug] GET    /api/v1/alerts            --> github.com/aiops/AiOpsHub/backend/internal/handler.ListAlerts (7 handlers)
+[GIN-debug] GET    /api/v1/alerts/:id        --> github.com/aiops/AiOpsHub/backend/internal/handler.GetAlert (7 handlers)
+[GIN-debug] POST   /api/v1/alerts            --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateAlert (7 handlers)
+[GIN-debug] POST   /api/v1/alerts/webhook    --> github.com/aiops/AiOpsHub/backend/internal/handler.AlertWebhook (7 handlers)
+[GIN-debug] GET    /api/v1/alerts/rules      --> github.com/aiops/AiOpsHub/backend/internal/handler.ListAlertRules (7 handlers)
+[GIN-debug] POST   /api/v1/alerts/rules      --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateAlertRule (7 handlers)
+[GIN-debug] PUT    /api/v1/alerts/rules/:id  --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateAlertRule (7 handlers)
+[GIN-debug] DELETE /api/v1/alerts/rules/:id  --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteAlertRule (7 handlers)
+[GIN-debug] GET    /api/v1/tools             --> github.com/aiops/AiOpsHub/backend/internal/handler.ListTools (7 handlers)
+[GIN-debug] GET    /api/v1/tools/:id         --> github.com/aiops/AiOpsHub/backend/internal/handler.GetTool (7 handlers)
+[GIN-debug] POST   /api/v1/tools/:id/execute --> github.com/aiops/AiOpsHub/backend/internal/handler.ExecuteTool (7 handlers)
+[GIN-debug] GET    /api/v1/ai-agents         --> github.com/aiops/AiOpsHub/backend/internal/handler.ListAIAgents (7 handlers)
+[GIN-debug] POST   /api/v1/ai-agents         --> github.com/aiops/AiOpsHub/backend/internal/handler.CreateAIAgent (7 handlers)
+[GIN-debug] GET    /api/v1/ai-agents/:id     --> github.com/aiops/AiOpsHub/backend/internal/handler.GetAIAgent (7 handlers)
+[GIN-debug] POST   /api/v1/ai-agents/:id/execute --> github.com/aiops/AiOpsHub/backend/internal/handler.ExecuteAIAgent (7 handlers)
+[GIN-debug] GET    /api/v1/monitor/stats     --> github.com/aiops/AiOpsHub/backend/internal/handler.GetStats (7 handlers)
+[GIN-debug] GET    /api/v1/monitor/tokens    --> github.com/aiops/AiOpsHub/backend/internal/handler.GetTokenStats (7 handlers)
+[GIN-debug] GET    /api/v1/monitor/cost      --> github.com/aiops/AiOpsHub/backend/internal/handler.GetCostStats (7 handlers)
+[GIN-debug] GET    /api/v1/monitor/performance --> github.com/aiops/AiOpsHub/backend/internal/handler.GetPerformance (7 handlers)
+[GIN-debug] GET    /api/v1/users             --> github.com/aiops/AiOpsHub/backend/internal/handler.ListUsers (8 handlers)
+[GIN-debug] GET    /api/v1/users/:id         --> github.com/aiops/AiOpsHub/backend/internal/handler.GetUser (8 handlers)
+[GIN-debug] PUT    /api/v1/users/:id         --> github.com/aiops/AiOpsHub/backend/internal/handler.UpdateUser (8 handlers)
+[GIN-debug] DELETE /api/v1/users/:id         --> github.com/aiops/AiOpsHub/backend/internal/handler.DeleteUser (8 handlers)
+2026-06-24T23:17:34.036+0800	[34mINFO[0m	logger/logger.go:61	API Server started on port 8080
+
+2026/06/24 23:17:50 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/user_repo.go:32
+[0m[33m[158.414ms] [34;1m[rows:1][0m SELECT * FROM "users" WHERE username = 'admin' ORDER BY "users"."id" LIMIT 1
+[GIN] 2026/06/24 - 23:17:50 | 200 |  296.874708ms |             ::1 | POST     "/api/v1/auth/login"
+
+2026/06/24 23:17:50 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/agent_repo.go:32
+[0m[33m[180.272ms] [34;1m[rows:1][0m SELECT * FROM "agents" LIMIT 10
+[GIN] 2026/06/24 - 23:17:50 | 200 |  256.574375ms |             ::1 | GET      "/api/v1/agents"
+[GIN] 2026/06/24 - 23:17:50 | 200 |  414.905084ms |             ::1 | GET      "/api/v1/ai-agents"
+
+2026/06/24 23:17:51 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32
+[0m[33m[191.909ms] [34;1m[rows:1][0m SELECT * FROM "workflows" LIMIT 10
+[GIN] 2026/06/24 - 23:17:51 | 200 |  556.715583ms |             ::1 | GET      "/api/v1/workflows"
+
+2026/06/24 23:17:51 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34 [33mSLOW SQL >= 200ms
+[0m[31;1m[414.039ms] [33m[rows:1][35m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10[0m
+[GIN] 2026/06/24 - 23:17:51 | 200 |  829.764625ms |             ::1 | GET      "/api/v1/alerts"
+
+2026/06/24 23:17:52 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/agent_repo.go:32
+[0m[33m[185.308ms] [34;1m[rows:1][0m SELECT * FROM "agents" LIMIT 10
+[GIN] 2026/06/24 - 23:17:52 | 200 |  288.819542ms |             ::1 | GET      "/api/v1/agents"
+
+2026/06/24 23:17:53 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32 [33mSLOW SQL >= 200ms
+[0m[31;1m[451.021ms] [33m[rows:1][35m SELECT * FROM "workflows" LIMIT 10[0m
+[GIN] 2026/06/24 - 23:17:53 | 200 |  496.689542ms |             ::1 | GET      "/api/v1/workflows"
+
+2026/06/24 23:17:56 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34
+[0m[33m[102.715ms] [34;1m[rows:1][0m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10
+[GIN] 2026/06/24 - 23:17:56 | 200 |     212.373ms |             ::1 | GET      "/api/v1/alerts"
+[GIN] 2026/06/24 - 23:17:57 | 200 |    108.1125ms |             ::1 | GET      "/api/v1/ai-agents"
+[GIN] 2026/06/24 - 23:17:59 | 200 |   72.733125ms |             ::1 | GET      "/api/v1/ai-agents"
+
+2026/06/24 23:17:59 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/agent_repo.go:32
+[0m[33m[156.985ms] [34;1m[rows:1][0m SELECT * FROM "agents" LIMIT 10
+[GIN] 2026/06/24 - 23:17:59 | 200 |     201.871ms |             ::1 | GET      "/api/v1/agents"
+
+2026/06/24 23:17:59 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32
+[0m[33m[175.084ms] [34;1m[rows:1][0m SELECT * FROM "workflows" LIMIT 10
+[GIN] 2026/06/24 - 23:17:59 | 200 |  248.417083ms |             ::1 | GET      "/api/v1/workflows"
+
+2026/06/24 23:17:59 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34 [33mSLOW SQL >= 200ms
+[0m[31;1m[388.194ms] [33m[rows:1][35m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10[0m
+[GIN] 2026/06/24 - 23:17:59 | 200 |  461.007375ms |             ::1 | GET      "/api/v1/alerts"
+
+2026/06/24 23:18:01 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34
+[0m[33m[86.091ms] [34;1m[rows:1][0m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10
+[GIN] 2026/06/24 - 23:18:01 | 200 |    209.7585ms |             ::1 | GET      "/api/v1/alerts"
+
+2026/06/24 23:18:03 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32
+[0m[33m[148.228ms] [34;1m[rows:1][0m SELECT * FROM "workflows" LIMIT 10
+[GIN] 2026/06/24 - 23:18:03 | 200 |  283.403333ms |             ::1 | GET      "/api/v1/workflows"
+
+2026/06/24 23:19:30 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/user_repo.go:32
+[0m[33m[132.072ms] [34;1m[rows:1][0m SELECT * FROM "users" WHERE username = 'admin' ORDER BY "users"."id" LIMIT 1
+Failed to generate token: failed to store token in Redis: MOVED 14043 192.168.100.115:6379
+[GIN] 2026/06/24 - 23:19:31 | 500 |  262.652084ms |             ::1 | POST     "/api/v1/auth/login"
+
+2026/06/24 23:19:43 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32
+[0m[33m[94.014ms] [34;1m[rows:1][0m SELECT * FROM "workflows" LIMIT 10
+[GIN] 2026/06/24 - 23:19:43 | 200 |     198.917ms |             ::1 | GET      "/api/v1/workflows"
+[GIN] 2026/06/24 - 23:19:44 | 200 |   90.551083ms |             ::1 | GET      "/api/v1/ai-agents"
+
+2026/06/24 23:19:44 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/workflow_repo.go:32
+[0m[33m[161.370ms] [34;1m[rows:1][0m SELECT * FROM "workflows" LIMIT 10
+[GIN] 2026/06/24 - 23:19:44 | 200 |  253.210375ms |             ::1 | GET      "/api/v1/workflows"
+
+2026/06/24 23:19:44 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/agent_repo.go:32 [33mSLOW SQL >= 200ms
+[0m[31;1m[246.994ms] [33m[rows:1][35m SELECT * FROM "agents" LIMIT 10[0m
+[GIN] 2026/06/24 - 23:19:44 | 200 |  300.252791ms |             ::1 | GET      "/api/v1/agents"
+
+2026/06/24 23:19:44 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34 [33mSLOW SQL >= 200ms
+[0m[31;1m[241.993ms] [33m[rows:1][35m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10[0m
+[GIN] 2026/06/24 - 23:19:44 | 200 |  333.927333ms |             ::1 | GET      "/api/v1/alerts"
+
+2026/06/24 23:19:45 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/agent_repo.go:32
+[0m[33m[83.795ms] [34;1m[rows:1][0m SELECT * FROM "agents" LIMIT 10
+[GIN] 2026/06/24 - 23:19:45 | 200 |  130.342709ms |             ::1 | GET      "/api/v1/agents"
+
+2026/06/24 23:19:46 [32m/Users/pengchunhui/code/aiops/AiOpsHub/backend/internal/repository/alert_repo.go:34
+[0m[33m[87.308ms] [34;1m[rows:1][0m SELECT * FROM "alerts" ORDER BY created_at DESC LIMIT 10
+[GIN] 2026/06/24 - 23:19:46 | 200 |     212.368ms |             ::1 | GET      "/api/v1/alerts"

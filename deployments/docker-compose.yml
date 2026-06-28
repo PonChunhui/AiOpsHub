@@ -1,0 +1,226 @@
+version: '3.8'
+
+services:
+  # PostgreSQL（合并Temporal和业务数据）
+  postgres:
+    image: postgres:15
+    container_name: aiops-postgres
+    environment:
+      POSTGRES_USER: aiops
+      POSTGRES_PASSWORD: aiops123
+      POSTGRES_DB: aiopsdb
+      # Temporal需要的数据库（会自动创建）
+      POSTGRES_MULTIPLE_DATABASES: aiopsdb,temporal,temporal_visibility
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./scripts/init-temporal-db.sh:/docker-entrypoint-initdb.d/init-temporal-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aiops-network
+
+  # Temporal Server（工作流引擎）
+  temporal-server:
+    image: temporalio/server:latest
+    container_name: temporal-server
+    ports:
+      - "7233:7233"   # Temporal Server RPC
+      - "8080:8080"   # Temporal Web UI
+    environment:
+      # 核心配置（修正）
+      - DB=default
+      - DB_DEFAULT=postgresql
+      - DB_POSTGRES_HOST=postgres
+      - DB_POSTGRES_PORT=5432
+      - DB_POSTGRES_USER=aiops
+      - DB_POSTGRES_PWD=aiops123
+      - DB_POSTGRES_DATABASE=temporal
+      # 可选配置
+      - BIND_ON_IP=0.0.0.0
+      - TEMPORAL_CLI_ADDRESS=temporal-server:7233
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aiops-network
+
+  # Redis（缓存和Agent状态）
+  redis:
+    image: redis:7-alpine
+    container_name: aiops-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - aiops-network
+
+  # Milvus（向量数据库）
+  milvus-standalone:
+    image: milvusdb/milvus:v2.3.3
+    container_name: milvus-standalone
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - aiops-network
+
+  # Milvus依赖 - Etcd
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: milvus-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    volumes:
+      - etcd-data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - aiops-network
+
+  # Milvus依赖 - MinIO
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: milvus-minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio-data:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - aiops-network
+
+  # ClickHouse（时序数据）
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: aiops-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: aiops_metrics
+      CLICKHOUSE_USER: aiops
+      CLICKHOUSE_PASSWORD: aiops123
+    networks:
+      - aiops-network
+
+  # Prometheus（监控Temporal和系统）
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: aiops-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - aiops-network
+
+  # Grafana（可视化）
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: aiops-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - aiops-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  milvus-data:
+  etcd-data:
+  minio-data:
+  clickhouse-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  aiops-network:
+    driver: bridge
+
+# 使用说明：
+# 
+# 开发环境快速启动：
+# -------------------
+# 1. 启动所有服务：
+#    docker-compose up -d
+#
+# 2. 等待Temporal Server初始化（约30秒）：
+#    docker-compose logs -f temporal-server
+#
+# 3. 访问服务：
+#    - Temporal Web UI: http://localhost:8080
+#    - Grafana: http://localhost:3000 (用户admin，密码admin123)
+#    - Prometheus: http://localhost:9090
+#
+# 4. 查看服务状态：
+#    docker-compose ps
+#
+# 5. 停止服务：
+#    docker-compose down
+#
+# 6. 清理所有数据（慎用）：
+#    docker-compose down -v
+#
+# 
+# PostgreSQL数据库说明：
+# -------------------
+# - 主数据库：aiopsdb (AiOpsHub业务数据)
+# - Temporal数据库：自动创建于同一实例（Schema隔离）
+# - 连接信息：
+#   Host: localhost
+#   Port: 5432
+#   User: aiops
+#   Password: aiops123
+#   Database: aiopsdb（业务）/ temporal（Temporal自动创建）
+#
+# 
+# 生产环境建议：
+# -------------------
+# 1. Temporal和业务数据使用独立PostgreSQL实例
+# 2. 增加备份策略
+# 3. 配置资源限制
+# 4. 启用认证和TLS
+#
+# 
+# 仅启动特定服务：
+# -------------------
+# 启动Temporal开发环境：
+#    docker-compose up -d postgres temporal-server
+#
+# 启动向量数据库：
+#    docker-compose up -d etcd minio milvus-standalone
+#
+# 启动监控：
+#    docker-compose up -d prometheus grafana

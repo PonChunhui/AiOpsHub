@@ -1,0 +1,55 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Temporal Server监控
+  - job_name: 'temporal-server'
+    static_configs:
+      - targets: ['temporal-server:7233']
+    metrics_path: '/metrics'
+
+  # PostgreSQL监控（需要postgres_exporter）
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  # Redis监控（需要redis_exporter）
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # ClickHouse监控
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse:8123']
+
+  # Milvus监控
+  - job_name: 'milvus'
+    static_configs:
+      - targets: ['milvus-standalone:9091']
+
+  # Node exporter（系统指标）
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # cAdvisor（容器监控）
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8081']
+
+# 告警规则（可选）
+rule_files:
+  - '/etc/prometheus/alert.rules.yml'
+
+# 告警管理器（可选）
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
