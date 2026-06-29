@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
@@ -47,7 +46,7 @@ func NewMilvusService(host, port, database string) (*MilvusService, error) {
 		dimension:  1536,
 	}
 
-	logger.Info(fmt.Sprintf("Milvus client connected: %s:%s", host, port))
+	logger.Debug(fmt.Sprintf("Milvus client connected: %s:%s", host, port))
 	return service, nil
 }
 
@@ -59,7 +58,7 @@ func (m *MilvusService) CreateCollection(ctx context.Context) error {
 
 	// 如果collection已存在，直接加载，不删除重建（避免数据丢失）
 	if has {
-		logger.Info(fmt.Sprintf("Collection %s already exists, skipping creation to preserve data", m.collection))
+		logger.Debug(fmt.Sprintf("Collection %s already exists, skipping creation to preserve data", m.collection))
 		return nil
 	}
 
@@ -87,9 +86,14 @@ func (m *MilvusService) CreateCollection(ctx context.Context) error {
 				TypeParams: map[string]string{"max_length": "50000"},
 			},
 			{
-				Name:       "category",
+				Name:       "doc_type",
 				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "100"},
+				TypeParams: map[string]string{"max_length": "50"},
+			},
+			{
+				Name:       "component",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "50"},
 			},
 			{
 				Name:       "tags",
@@ -129,7 +133,7 @@ func (m *MilvusService) CreateCollection(ctx context.Context) error {
 		return err
 	}
 
-	index, err := entity.NewIndexIvfFlat(entity.L2, 128)
+	index, err := entity.NewIndexIvfFlat(entity.COSINE, 128)
 	if err != nil {
 		return err
 	}
@@ -139,7 +143,7 @@ func (m *MilvusService) CreateCollection(ctx context.Context) error {
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Collection %s created successfully with content max_length=50000", m.collection))
+	logger.Debug(fmt.Sprintf("Collection %s created successfully with COSINE metric", m.collection))
 	return nil
 }
 
@@ -187,7 +191,8 @@ func (m *MilvusService) InsertDocument(ctx context.Context, doc KnowledgeDocumen
 		entity.NewColumnVarChar("id", []string{doc.ID}),
 		entity.NewColumnVarChar("title", []string{doc.Title}),
 		entity.NewColumnVarChar("content", []string{doc.Content}),
-		entity.NewColumnVarChar("category", []string{doc.Category}),
+		entity.NewColumnVarChar("doc_type", []string{doc.DocType}),
+		entity.NewColumnVarChar("component", []string{doc.Component}),
 		entity.NewColumnVarChar("tags", []string{string(tagsJSON)}),
 		entity.NewColumnFloatVector("embedding", int(m.dimension), [][]float32{embedding}),
 		entity.NewColumnVarChar("created_at", []string{createdAt}),
@@ -202,7 +207,7 @@ func (m *MilvusService) InsertDocument(ctx context.Context, doc KnowledgeDocumen
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Document inserted: %s", doc.ID))
+	logger.Debug(fmt.Sprintf("Document inserted: %s", doc.ID))
 	return nil
 }
 
@@ -217,10 +222,10 @@ func (m *MilvusService) SearchDocuments(ctx context.Context, queryEmbedding []fl
 		m.collection,
 		[]string{},
 		"",
-		[]string{"id", "title", "content", "category", "tags", "created_at", "created_by", "updated_at", "updated_by"},
+		[]string{"id", "title", "content", "doc_type", "component", "tags", "created_at", "created_by", "updated_at", "updated_by"},
 		[]entity.Vector{entity.FloatVector(queryEmbedding)},
 		"embedding",
-		entity.L2,
+		entity.COSINE,
 		topK,
 		sp,
 	)
@@ -235,7 +240,8 @@ func (m *MilvusService) SearchDocuments(ctx context.Context, queryEmbedding []fl
 			id, _ := result.Fields.GetColumn("id").Get(i)
 			title, _ := result.Fields.GetColumn("title").Get(i)
 			content, _ := result.Fields.GetColumn("content").Get(i)
-			category, _ := result.Fields.GetColumn("category").Get(i)
+			docType, _ := result.Fields.GetColumn("doc_type").Get(i)
+			component, _ := result.Fields.GetColumn("component").Get(i)
 			tagsStr, _ := result.Fields.GetColumn("tags").Get(i)
 			createdAt, _ := result.Fields.GetColumn("created_at").Get(i)
 			createdBy, _ := result.Fields.GetColumn("created_by").Get(i)
@@ -262,41 +268,29 @@ func (m *MilvusService) SearchDocuments(ctx context.Context, queryEmbedding []fl
 			}
 
 			doc := KnowledgeDocument{
-				ID:       id.(string),
-				Title:    title.(string),
-				Content:  content.(string),
-				Category: category.(string),
-				Tags:     tags,
-				Metadata: metadata,
+				ID:        id.(string),
+				Title:     title.(string),
+				Content:   content.(string),
+				DocType:   docType.(string),
+				Component: component.(string),
+				Tags:      tags,
+				Metadata:  metadata,
 			}
 
-			// 计算相关性评分（修正的评分计算）
-			// L2距离越小越相似，转换为0-1的评分
-			// 实际向量距离范围：0-200（根据日志观察）
-			// 使用指数衰减公式：score = exp(-distance/30)
-			// 衰减系数30使评分对距离敏感度适中：
-			//   distance=0 → score=1.0（完全匹配）
-			//   distance=1.5 → score=0.95（高相关，阈值线）
-			//   distance=3 → score=0.90（中等相关）
-			//   distance=5 → score=0.85（边缘相关）
-			//   distance=10 → score=0.72（弱相关，被过滤）
-			//   distance=30 → score=0.37（不相关）
-			//   distance=100 → score=0.04（完全不相关）
-			// 注意：距离<2通常表示语义相似，距离>10表示不相关
-			distance := float64(result.Scores[i])
-			score := math.Exp(-distance / 30.0)
+			cosineSimilarity := float64(result.Scores[i])
+			score := cosineSimilarity
 
-			// 确保评分在0-1范围内
 			if score > 1.0 {
 				score = 1.0
 			}
-			if score < 0 {
-				score = 0
+			if score < -1.0 {
+				score = -1.0
 			}
 
-			// 详细日志：记录距离和评分的关系
-			logger.Info(fmt.Sprintf("Milvus search: title=%s, distance=%.4f, score=%.4f",
-				doc.Title, distance, score))
+			distance := 1.0 - cosineSimilarity
+
+			logger.Debug(fmt.Sprintf("Milvus search: title=%s, cosine_similarity=%.4f, score=%.4f",
+				doc.Title, cosineSimilarity, score))
 
 			searchResults = append(searchResults, SearchResult{
 				Document: doc,
@@ -306,7 +300,7 @@ func (m *MilvusService) SearchDocuments(ctx context.Context, queryEmbedding []fl
 		}
 	}
 
-	logger.Info(fmt.Sprintf("Found %d documents", len(searchResults)))
+	logger.Debug(fmt.Sprintf("Found %d documents", len(searchResults)))
 	return searchResults, nil
 }
 
@@ -322,20 +316,21 @@ func (m *MilvusService) ListDocuments(ctx context.Context, limit int) ([]Knowled
 		m.collection,
 		[]string{},
 		expr,
-		[]string{"id", "title", "content", "category", "tags", "created_at", "created_by", "updated_at", "updated_by"},
+		[]string{"id", "title", "content", "doc_type", "component", "tags", "created_at", "created_by", "updated_at", "updated_by"},
 	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to list documents: %v", err))
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Milvus Query returned %d documents (limit requested: %d)", results.GetColumn("id").Len(), limit))
+	logger.Debug(fmt.Sprintf("Milvus Query returned %d documents (limit requested: %d)", results.GetColumn("id").Len(), limit))
 
 	docs := []KnowledgeDocument{}
 	idCol := results.GetColumn("id")
 	titleCol := results.GetColumn("title")
 	contentCol := results.GetColumn("content")
-	categoryCol := results.GetColumn("category")
+	docTypeCol := results.GetColumn("doc_type")
+	componentCol := results.GetColumn("component")
 	tagsCol := results.GetColumn("tags")
 	createdAtCol := results.GetColumn("created_at")
 	createdByCol := results.GetColumn("created_by")
@@ -346,7 +341,8 @@ func (m *MilvusService) ListDocuments(ctx context.Context, limit int) ([]Knowled
 		id, _ := idCol.Get(i)
 		title, _ := titleCol.Get(i)
 		content, _ := contentCol.Get(i)
-		category, _ := categoryCol.Get(i)
+		docType, _ := docTypeCol.Get(i)
+		component, _ := componentCol.Get(i)
 		tagsStr, _ := tagsCol.Get(i)
 		createdAt, _ := createdAtCol.Get(i)
 		createdBy, _ := createdByCol.Get(i)
@@ -373,16 +369,17 @@ func (m *MilvusService) ListDocuments(ctx context.Context, limit int) ([]Knowled
 		}
 
 		docs = append(docs, KnowledgeDocument{
-			ID:       id.(string),
-			Title:    title.(string),
-			Content:  content.(string),
-			Category: category.(string),
-			Tags:     tags,
-			Metadata: metadata,
+			ID:        id.(string),
+			Title:     title.(string),
+			Content:   content.(string),
+			DocType:   docType.(string),
+			Component: component.(string),
+			Tags:      tags,
+			Metadata:  metadata,
 		})
 	}
 
-	logger.Info(fmt.Sprintf("Listed %d documents", len(docs)))
+	logger.Debug(fmt.Sprintf("Listed %d documents", len(docs)))
 	return docs, nil
 }
 
@@ -394,7 +391,7 @@ func (m *MilvusService) GetDocument(ctx context.Context, docID string) (*Knowled
 		m.collection,
 		[]string{},
 		expr,
-		[]string{"id", "title", "content", "category", "tags", "created_at", "created_by", "updated_at", "updated_by"},
+		[]string{"id", "title", "content", "doc_type", "component", "tags", "created_at", "created_by", "updated_at", "updated_by"},
 	)
 	if err != nil {
 		return nil, err
@@ -407,7 +404,8 @@ func (m *MilvusService) GetDocument(ctx context.Context, docID string) (*Knowled
 	id, _ := results.GetColumn("id").Get(0)
 	title, _ := results.GetColumn("title").Get(0)
 	content, _ := results.GetColumn("content").Get(0)
-	category, _ := results.GetColumn("category").Get(0)
+	docType, _ := results.GetColumn("doc_type").Get(0)
+	component, _ := results.GetColumn("component").Get(0)
 	tagsStr, _ := results.GetColumn("tags").Get(0)
 	createdAt, _ := results.GetColumn("created_at").Get(0)
 	createdBy, _ := results.GetColumn("created_by").Get(0)
@@ -434,12 +432,13 @@ func (m *MilvusService) GetDocument(ctx context.Context, docID string) (*Knowled
 	}
 
 	doc := &KnowledgeDocument{
-		ID:       id.(string),
-		Title:    title.(string),
-		Content:  content.(string),
-		Category: category.(string),
-		Tags:     tags,
-		Metadata: metadata,
+		ID:        id.(string),
+		Title:     title.(string),
+		Content:   content.(string),
+		DocType:   docType.(string),
+		Component: component.(string),
+		Tags:      tags,
+		Metadata:  metadata,
 	}
 
 	return doc, nil
@@ -454,7 +453,7 @@ func (m *MilvusService) DeleteDocument(ctx context.Context, docID string) error 
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Document deleted: %s", docID))
+	logger.Debug(fmt.Sprintf("Document deleted: %s", docID))
 	return nil
 }
 
@@ -463,14 +462,22 @@ func (m *MilvusService) LoadCollection(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logger.Info(fmt.Sprintf("Collection %s loaded", m.collection))
+	logger.Debug(fmt.Sprintf("Collection %s loaded", m.collection))
 	return nil
 }
 
 func (m *MilvusService) Close() error {
 	if m.client != nil {
 		m.client.Close()
-		logger.Info("Milvus client closed")
+		logger.Debug("Milvus client closed")
 	}
 	return nil
+}
+
+func (m *MilvusService) HasCollection(ctx context.Context, collectionName string) (bool, error) {
+	return m.client.HasCollection(ctx, collectionName)
+}
+
+func (m *MilvusService) DropCollection(ctx context.Context, collectionName string) error {
+	return m.client.DropCollection(ctx, collectionName)
 }

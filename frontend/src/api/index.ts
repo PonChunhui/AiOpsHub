@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 export interface ApiResponse {
   code: number
@@ -7,13 +9,25 @@ export interface ApiResponse {
   data?: any
   results?: any[]
   documents?: any[]
+  document?: any
   servers?: any[]
   total?: number
   tools?: any[]
   success?: boolean
 }
 
+const errorMessages = new Map<string, number>()
+const ERROR_MESSAGE_INTERVAL = 3000
 
+function showError(message: string) {
+  const now = Date.now()
+  const lastShown = errorMessages.get(message)
+  
+  if (!lastShown || now - lastShown > ERROR_MESSAGE_INTERVAL) {
+    ElMessage.error(message)
+    errorMessages.set(message, now)
+  }
+}
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -49,16 +63,34 @@ api.interceptors.response.use(
     
     if (error.response?.status === 401) {
       console.log('Token失效，跳转登录页')
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-      localStorage.removeItem('userId')
+      
+      const authStore = useAuthStore()
+      authStore.clear()
       
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login'
+        router.push('/login')
+        // 使用去重机制，避免短时间内重复提示
+        const loginExpiredMessage = '登录已过期，请重新登录'
+        const now = Date.now()
+        const lastShown = errorMessages.get(loginExpiredMessage)
+        
+        if (!lastShown || now - lastShown > ERROR_MESSAGE_INTERVAL) {
+          ElMessage.warning(loginExpiredMessage)
+          errorMessages.set(loginExpiredMessage, now)
+        }
       }
+    } else if (error.response?.status === 502) {
+      showError('服务器错误(502)：后端服务不可用，请稍后重试')
+    } else if (error.response?.status === 503) {
+      showError('服务器错误(503)：服务暂时不可用，请稍后重试')
+    } else if (error.response?.status === 504) {
+      showError('服务器错误(504)：请求超时，请稍后重试')
+    } else if (error.message?.includes('Network Error') || error.message?.includes('Failed to fetch')) {
+      showError('网络连接失败，请检查网络或后端服务是否可用')
+    } else {
+      showError('请求失败: ' + (error.response?.data?.message || error.message))
     }
     
-    ElMessage.error('请求失败: ' + (error.response?.data?.message || error.message))
     return Promise.reject(error)
   }
 )
@@ -100,8 +132,8 @@ export const ragApi = {
     api.post('/rag/search', { query, top_k: topK }),
   getContext: (query: string, maxTokens: number = 500): Promise<ApiResponse> =>
     api.get('/rag/context', { params: { query, max_tokens: maxTokens } }),
-  listDocuments: (category?: string, search?: string, page?: number, pageSize?: number): Promise<ApiResponse> =>
-    api.get('/rag/documents', { params: { category, search, page, pageSize } }),
+  listDocuments: (docType?: string, component?: string, search?: string, page?: number, pageSize?: number): Promise<ApiResponse> =>
+    api.get('/rag/documents', { params: { doc_type: docType, component, search, page, pageSize } }),
   getDocument: (id: string): Promise<ApiResponse> =>
     api.get(`/rag/documents/${id}`),
   addDocument: (data: any): Promise<ApiResponse> =>

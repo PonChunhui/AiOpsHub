@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -73,7 +74,7 @@ func NewEmbeddingService(provider, model, apiKey, baseURL string) *EmbeddingServ
 		EnableChunking: true, // 默认启用分块
 	}
 
-	logger.Info(fmt.Sprintf("Embedding service created: provider=%s, model=%s, chunking=%v, chunkSize=%d",
+	logger.Debug(fmt.Sprintf("Embedding service created: provider=%s, model=%s, chunking=%v, chunkSize=%d",
 		provider, model, service.EnableChunking, service.MaxChunkSize))
 	return service
 }
@@ -98,16 +99,16 @@ func (e *EmbeddingService) GetEmbedding(ctx context.Context, text string) ([]flo
 	}
 
 	// 长文本：智能分块处理
-	logger.Info(fmt.Sprintf("Long text detected, using chunking strategy: length=%d", len(text)))
+	logger.Debug(fmt.Sprintf("Long text detected, using chunking strategy: length=%d", len(text)))
 
 	// 1. 智能分块
 	chunks := e.chunkText(text)
-	logger.Info(fmt.Sprintf("Text split into %d chunks", len(chunks)))
+	logger.Debug(fmt.Sprintf("Text split into %d chunks", len(chunks)))
 
 	// 2. 为每个分块生成向量
 	embeddings := [][]float32{}
 	for i, chunk := range chunks {
-		logger.Info(fmt.Sprintf("Processing chunk %d: length=%d, preview=%s",
+		logger.Debug(fmt.Sprintf("Processing chunk %d: length=%d, preview=%s",
 			i+1, len(chunk), truncatePreview(chunk, 50)))
 
 		embedding, err := e.getSingleEmbedding(ctx, chunk)
@@ -125,7 +126,7 @@ func (e *EmbeddingService) GetEmbedding(ctx context.Context, text string) ([]flo
 
 	// 3. 向量融合（平均池化）
 	fusedEmbedding := e.averagePooling(embeddings)
-	logger.Info(fmt.Sprintf("Embeddings fused: chunks=%d, dimension=%d",
+	logger.Debug(fmt.Sprintf("Embeddings fused: chunks=%d, dimension=%d",
 		len(embeddings), len(fusedEmbedding)))
 
 	return fusedEmbedding, nil
@@ -136,10 +137,17 @@ func (e *EmbeddingService) GetEmbedding(ctx context.Context, text string) ([]flo
 func (e *EmbeddingService) getSingleEmbedding(ctx context.Context, text string) ([]float32, error) {
 	switch e.Provider {
 	case "openai":
-		return e.getOpenAIEmbedding(ctx, text)
+		embedding, err := e.getOpenAIEmbedding(ctx, text)
+		if err != nil {
+			return nil, err
+		}
+		return e.normalizeVector(embedding), nil
 	case "aliyun_bailian", "qwen":
-		// 阿里云使用OpenAI兼容模式
-		return e.getOpenAIEmbedding(ctx, text)
+		embedding, err := e.getOpenAIEmbedding(ctx, text)
+		if err != nil {
+			return nil, err
+		}
+		return e.normalizeVector(embedding), nil
 	default:
 		return e.getMockEmbedding(text), nil
 	}
@@ -297,14 +305,12 @@ func (e *EmbeddingService) averagePooling(embeddings [][]float32) []float32 {
 	}
 
 	if len(embeddings) == 1 {
-		return embeddings[0]
+		return e.normalizeVector(embeddings[0])
 	}
 
-	// 获取向量维度
 	dimension := len(embeddings[0])
 	fused := make([]float32, dimension)
 
-	// 计算每个维度的平均值
 	for i := 0; i < dimension; i++ {
 		sum := float32(0)
 		for _, embedding := range embeddings {
@@ -315,7 +321,38 @@ func (e *EmbeddingService) averagePooling(embeddings [][]float32) []float32 {
 		fused[i] = sum / float32(len(embeddings))
 	}
 
-	return fused
+	return e.normalizeVector(fused)
+}
+
+// normalizeVector 归一化向量（L2归一化）
+// 将向量归一化到单位长度，使L2距离等同于余弦相似度
+//
+// 归一化公式：v_normalized = v / ||v||
+// 其中 ||v|| = sqrt(sum(v_i^2))
+//
+// 参数：vector - 待归一化的向量
+// 返回：归一化后的向量
+func (e *EmbeddingService) normalizeVector(vector []float32) []float32 {
+	if len(vector) == 0 {
+		return vector
+	}
+
+	norm := float32(0)
+	for _, v := range vector {
+		norm += v * v
+	}
+	norm = float32(math.Sqrt(float64(norm)))
+
+	if norm == 0 {
+		return vector
+	}
+
+	normalized := make([]float32, len(vector))
+	for i, v := range vector {
+		normalized[i] = v / norm
+	}
+
+	return normalized
 }
 
 // truncatePreview 截取文本预览（用于日志）
@@ -366,7 +403,7 @@ func (e *EmbeddingService) getOpenAIEmbedding(ctx context.Context, text string) 
 		return nil, fmt.Errorf("no embedding returned")
 	}
 
-	logger.Info(fmt.Sprintf("OpenAI embedding generated: tokens=%d", embeddingResp.Usage.TotalTokens))
+	logger.Debug(fmt.Sprintf("OpenAI embedding generated: tokens=%d", embeddingResp.Usage.TotalTokens))
 	return embeddingResp.Data[0].Embedding, nil
 }
 
@@ -380,6 +417,6 @@ func (e *EmbeddingService) getMockEmbedding(text string) []float32 {
 		embedding[i] = float32(i%10) / 10.0
 	}
 
-	logger.Info(fmt.Sprintf("Mock embedding generated for text (length=%d)", len(text)))
+	logger.Debug(fmt.Sprintf("Mock embedding generated for text (length=%d)", len(text)))
 	return embedding
 }

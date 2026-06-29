@@ -36,7 +36,7 @@ temporal:
 
 llm:
   provider: "aliyun_bailian"
-  model: "qwen-turbo"
+  model: "glm-5.2"
   api_key: "sk-086920878fb641a3bea1ce785eacb200"
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   temperature: 0.7
@@ -66,5 +66,5 @@ jwt:
   expire: "24h"
 
 log:
-  level: "debug"
+  level: "info"
   format: "console"

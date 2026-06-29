@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>直连后端 SSE 测试</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        input, button { padding: 10px; margin: 10px; font-size: 14px; }
+        .output { background: #f5f5f5; padding: 15px; border-radius: 4px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>直连后端 SSE 测试（绕过 Vite 代理）</h1>
+    <div>
+        <input type="text" id="token" placeholder="Token" style="width: 400px;">
+        <button onclick="testDirect()">直连后端测试</button>
+        <button onclick="testProxy()">通过代理测试</button>
+    </div>
+    <div class="output" id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        const tokenInput = document.getElementById('token');
+        
+        // 自动获取 token
+        async function init() {
+            const res = await fetch('http://localhost:8080/api/v1/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: 'admin', password: 'admin123' })
+            });
+            const data = await res.json();
+            tokenInput.value = data.data.token;
+            output.textContent = 'Token 已自动获取\n\n';
+        }
+        init();
+        
+        async function createSession(token, baseUrl) {
+            const res = await fetch(`${baseUrl}/api/v1/chat/sessions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title: 'Test' })
+            });
+            const data = await res.json();
+            return data.data.id;
+        }
+        
+        async function testSSE(baseUrl, label) {
+            const token = tokenInput.value;
+            output.textContent += `\n=== ${label} ===\n`;
+            output.textContent += `Base URL: ${baseUrl}\n`;
+            
+            try {
+                const sessionId = await createSession(token, baseUrl);
+                output.textContent += `Session: ${sessionId}\n`;
+                output.textContent += `开始 SSE 流...\n\n`;
+                
+                const startTime = Date.now();
+                
+                const response = await fetch(`${baseUrl}/api/v1/chat/messages/stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        content: '你好'
+                    })
+                });
+                
+                output.textContent += `Status: ${response.status}\n`;
+                output.textContent += `Content-Type: ${response.headers.get('content-type')}\n\n`;
+                
+                if (!response.ok) {
+                    output.textContent += `Error: ${await response.text()}\n`;
+                    return;
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+                let chunkCount = 0;
+                let aiContent = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        output.textContent += `\n✅ Stream completed\n`;
+                        break;
+                    }
+                    
+                    chunkCount++;
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('event: chunk')) {
+                            const dataLine = lines[lines.indexOf(line) + 1];
+                            if (dataLine && dataLine.startsWith('data:')) {
+                                const data = JSON.parse(dataLine.substring(5).trim());
+                                aiContent += data.content;
+                                output.textContent += `[${chunkCount}] ${data.content}\n`;
+                            }
+                        }
+                    }
+                }
+                
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                output.textContent += `\n总耗时: ${duration}秒\n`;
+                output.textContent += `AI回复: ${aiContent}\n`;
+                
+            } catch (error) {
+                output.textContent += `❌ Error: ${error.message}\n`;
+                console.error(error);
+            }
+        }
+        
+        function testDirect() {
+            testSSE('http://localhost:8080', '直连后端');
+        }
+        
+        function testProxy() {
+            testSSE('http://localhost:5173', '通过 Vite 代理');
+        }
+    </script>
+</body>
+</html>

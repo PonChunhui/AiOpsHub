@@ -28,6 +28,7 @@
     "material-design-icons-iconfont": "^6.7.0",
     "mermaid": "^11.16.0",
     "pinia": "^3.0.4",
+    "vditor": "^3.11.2",
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"
   },

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE 流式输出测试 - 超时处理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #66b1ff;
+        }
+        button:disabled {
+            background: #c0c4cc;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #f0f9ff;
+            color: #409eff;
+        }
+        .status.error {
+            background: #fef0f0;
+            color: #f56c6c;
+        }
+        .content-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSE 流式输出测试 - 超时处理</h1>
+        
+        <div class="input-group">
+            <label>Token:</label>
+            <input type="text" id="token" placeholder="Bearer token" />
+        </div>
+        
+        <div class="input-group">
+            <label>会话ID:</label>
+            <input type="text" id="sessionId" placeholder="留空则自动创建新会话" />
+        </div>
+        
+        <div class="input-group">
+            <label>消息内容:</label>
+            <textarea id="message" rows="3" placeholder="输入消息...">你好</textarea>
+        </div>
+        
+        <div class="input-group">
+            <label>超时时间（秒）:</label>
+            <input type="number" id="timeout" value="30" min="5" max="60" />
+        </div>
+        
+        <button id="sendBtn" onclick="sendMessage()">发送消息</button>
+        <button id="cancelBtn" onclick="cancelRequest()" disabled>取消请求</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="output" id="output"></div>
+        
+        <div class="content-display" id="contentDisplay">
+            <h3>AI 回复内容：</h3>
+            <div id="aiContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const tokenInput = document.getElementById('token');
+        const sessionIdInput = document.getElementById('sessionId');
+        const messageInput = document.getElementById('message');
+        const timeoutInput = document.getElementById('timeout');
+        const sendBtn = document.getElementById('sendBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+        const aiContentDiv = document.getElementById('aiContent');
+        
+        let currentReader = null;
+        let timeoutId = null;
+        let receivedDoneEvent = false;
+        
+        // 从 localStorage 加载 token
+        const savedToken = localStorage.getItem('token');
+        if (savedToken) {
+            tokenInput.value = savedToken;
+        }
+        
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isError ? 'error' : 'success');
+            statusDiv.style.display = 'block';
+        }
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            outputDiv.textContent += `[${timestamp}] ${message}\n`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        function clearOutput() {
+            outputDiv.textContent = '';
+            aiContentDiv.textContent = '';
+        }
+        
+        async function createSession(token) {
+            log('创建新会话...');
+            const response = await fetch('/api/v1/chat/sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title: '测试会话' })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`创建会话失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const sessionId = data.data.id;
+            log(`会话创建成功: ${sessionId}`);
+            return sessionId;
+        }
+        
+        function cancelRequest() {
+            if (currentReader) {
+                log('用户取消请求，正在关闭 reader...');
+                currentReader.cancel().then(() => {
+                    log('Reader 已取消');
+                }).catch(err => {
+                    log('取消 reader 失败: ' + err.message);
+                });
+                currentReader = null;
+            }
+            
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+            
+            sendBtn.disabled = false;
+            cancelBtn.disabled = true;
+            showStatus('请求已取消', true);
+        }
+        
+        async function sendMessage() {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                showStatus('请输入 Token', true);
+                return;
+            }
+            
+            // 保存 token 到 localStorage
+            localStorage.setItem('token', token);
+            
+            const message = messageInput.value.trim();
+            if (!message) {
+                showStatus('请输入消息', true);
+                return;
+            }
+            
+            const timeoutSeconds = parseInt(timeoutInput.value) || 30;
+            
+            clearOutput();
+            sendBtn.disabled = true;
+            cancelBtn.disabled = false;
+            receivedDoneEvent = false;
+            showStatus('正在发送...');
+            
+            try {
+                // 获取或创建会话
+                let sessionId = sessionIdInput.value.trim();
+                if (!sessionId) {
+                    sessionId = await createSession(token);
+                    sessionIdInput.value = sessionId;
+                }
+                
+                log('发送消息...');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/v1/chat/messages/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        content: message
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`发送失败: ${response.status} ${errorText}`);
+                }
+                
+                log('开始接收流式数据...');
+                log('');
+                
+                currentReader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let currentEvent = '';
+                let fullContent = '';
+                let chunkCount = 0;
+                
+                // 设置超时
+                timeoutId = setTimeout(() => {
+                    if (!receivedDoneEvent && currentReader) {
+                        log('');
+                        log(`超时（${timeoutSeconds}秒），强制关闭连接`);
+                        cancelRequest();
+                        
+                        if (fullContent) {
+                            log('已接收的部分内容:');
+                            log(fullContent);
+                            aiContentDiv.textContent = fullContent;
+                        }
+                    }
+                }, timeoutSeconds * 1000);
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        log('');
+                        log('流式传输完成（连接关闭）');
+                        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                        log(`总耗时: ${duration} 秒`);
+                        log(`收到 ${chunkCount} 个数据块`);
+                        log(`总内容长度: ${fullContent.length} 字符`);
+                        break;
+                    }
+                    
+                    chunkCount++;
+                    log(`[Chunk ${chunkCount}] 收到 ${value.length} 字节`);
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.substring(7).trim();
+                            log(`  Event: ${currentEvent}`);
+                        } else if (line.startsWith('data: ')) {
+                            const data = line.substring(6).trim();
+                            if (!data) continue;
+                            
+                            try {
+                                const parsed = JSON.parse(data);
+                                
+                                if (currentEvent === 'chunk') {
+                                    const content = parsed.content || '';
+                                    fullContent += content;
+                                    log(`  Content: "${content}"`);
+                                } else if (currentEvent === 'user_message') {
+                                    log(`  User message ID: ${parsed.id}`);
+                                } else if (currentEvent === 'ai_message') {
+                                    log(`  AI message ID: ${parsed.id}`);
+                                } else if (currentEvent === 'rag_references') {
+                                    log(`  RAG references: ${Array.isArray(parsed) ? parsed.length : 0} 条`);
+                                } else if (currentEvent === 'done') {
+                                    log(`  Done: ${parsed.message}`);
+                                    receivedDoneEvent = true;
+                                    
+                                    // 收到 done 事件，主动关闭 reader
+                                    log('');
+                                    log('收到 done 事件，主动关闭 reader...');
+                                    if (currentReader) {
+                                        currentReader.cancel().then(() => {
+                                            log('Reader 已成功关闭');
+                                        }).catch(err => {
+                                            log('关闭 reader 时出错: ' + err.message);
+                                        });
+                                        currentReader = null;
+                                    }
+                                    
+                                    if (timeoutId) {
+                                        clearTimeout(timeoutId);
+                                        timeoutId = null;
+                                    }
+                                }
+                            } catch (e) {
+                                log(`  Data (raw): ${data.substring(0, 100)}`);
+                            }
+                            
+                            currentEvent = '';
+                        } else if (line.startsWith(':')) {
+                            // SSE 注释行
+                            log(`  Comment: ${line}`);
+                        }
+                    }
+                    
+                    // 如果已经收到 done 事件，退出循环
+                    if (receivedDoneEvent) {
+                        break;
+                    }
+                }
+                
+                // 清理
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                currentReader = null;
+                
+                log('');
+                log('AI 完整回复:');
+                log(fullContent);
+                aiContentDiv.textContent = fullContent;
+                
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                showStatus(`流式输出测试成功！耗时 ${duration} 秒`, false);
+                
+            } catch (error) {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                currentReader = null;
+                
+                log(`错误: ${error.message}`);
+                console.error('Detailed error:', error);
+                showStatus(`错误: ${error.message}`, true);
+            } finally {
+                sendBtn.disabled = false;
+                cancelBtn.disabled = true;
+            }
+        }
+    </script>
+</body>
+</html>

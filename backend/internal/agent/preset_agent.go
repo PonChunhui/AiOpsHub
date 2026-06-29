@@ -39,7 +39,7 @@ func NewPresetAgentExecutor(agent *model.Agent, mcpSvc *service.MCPService, ragS
 }
 
 func (e *PresetAgentExecutor) Execute(ctx context.Context, userInput string, additionalContext map[string]interface{}) (string, error) {
-	logger.Info(fmt.Sprintf("执行预设 Agent: %s (%s)", e.agent.Name, e.agent.Avatar))
+	logger.Debug(fmt.Sprintf("执行预设 Agent: %s (%s)", e.agent.Name, e.agent.Avatar))
 
 	// 构建完整 prompt
 	fullPrompt := e.buildPrompt(userInput, additionalContext)
@@ -52,7 +52,7 @@ func (e *PresetAgentExecutor) Execute(ctx context.Context, userInput string, add
 
 	// 检查是否需要工具调用
 	if e.mcpSvc != nil && e.containsToolCall(response) {
-		logger.Info(fmt.Sprintf("Agent %s 需要调用工具", e.agent.Name))
+		logger.Debug(fmt.Sprintf("Agent %s 需要调用工具", e.agent.Name))
 
 		// 执行工具调用循环
 		finalResponse, err := e.executeToolLoop(ctx, response, userInput)
@@ -143,7 +143,7 @@ func (e *PresetAgentExecutor) executeToolLoop(ctx context.Context, initialRespon
 			arguments = make(map[string]interface{})
 		}
 
-		logger.Info(fmt.Sprintf("Agent %s 执行工具: %s.%s", e.agent.Name, serverName, toolName))
+		logger.Debug(fmt.Sprintf("Agent %s 执行工具: %s.%s", e.agent.Name, serverName, toolName))
 
 		// 调用 MCP 工具
 		result, err := e.callMCPTool(ctx, serverName, toolName, arguments)

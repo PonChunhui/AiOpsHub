@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/aiops/AiOpsHub/backend/internal/service"
 	"github.com/aiops/AiOpsHub/backend/pkg/llm"
@@ -20,7 +19,7 @@ type ChatHandler struct {
 }
 
 // NewChatHandler 创建对话处理器实例
-func NewChatHandler(ragSvc *service.RAGService, mcpSvc *service.MCPService, agentSvc *service.AgentService) (*ChatHandler, error) {
+func NewChatHandler(ragSvc *service.RAGService, mcpSvc *service.MCPService, agentSvc *service.AgentService, tokenSvc *service.TokenService) (*ChatHandler, error) {
 	llmConfig := llm.EinoLLMConfig{
 		Model:       viper.GetString("llm.model"),
 		Temperature: viper.GetFloat64("llm.temperature"),
@@ -51,7 +50,7 @@ func NewChatHandler(ragSvc *service.RAGService, mcpSvc *service.MCPService, agen
 		logger.Info("ChatHandler未启用RAG功能")
 	}
 
-	chatService, err := service.NewChatService(llmConfig, ragServiceToUse, mcpSvc, agentSvc)
+	chatService, err := service.NewChatService(llmConfig, ragServiceToUse, mcpSvc, agentSvc, tokenSvc)
 	if err != nil {
 		return nil, err
 	}
@@ -150,14 +149,14 @@ func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 		return
 	}
 
-	logger.Info(fmt.Sprintf("SendMessageStream: ragReferences数量=%d", len(ragReferences)))
+	logger.Debug(fmt.Sprintf("SendMessageStream: ragReferences数量=%d", len(ragReferences)))
 	for i, ref := range ragReferences {
-		logger.Info(fmt.Sprintf("RAG引用[%d]: title=%s, score=%.2f", i, ref["title"], ref["score"]))
+		logger.Debug(fmt.Sprintf("RAG引用[%d]: title=%s, score=%.2f", i, ref["title"], ref["score"]))
 	}
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
+	c.Header("Connection", "close")
 	c.Header("Access-Control-Allow-Origin", "*")
 
 	flusher, ok := c.Writer.(http.Flusher)
@@ -174,7 +173,7 @@ func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 
 	// 总是发送rag_references事件，即使为空（便于前端调试）
 	sendSSE(c, flusher, "rag_references", ragReferences)
-	logger.Info(fmt.Sprintf("已发送rag_references事件，数量=%d", len(ragReferences)))
+	logger.Debug(fmt.Sprintf("已发送rag_references事件，数量=%d", len(ragReferences)))
 
 	fullContent := ""
 	for chunk := range streamChan {
@@ -194,26 +193,61 @@ func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 	}
 
 	sendSSE(c, flusher, "done", gin.H{"message": "流式输出完成"})
-}
 
-func sendSSE(c *gin.Context, flusher http.Flusher, event string, data interface{}) {
-	c.Writer.WriteString(fmt.Sprintf("event: %s\n", event))
-	c.Writer.WriteString(fmt.Sprintf("data: %s\n\n", toJson(data)))
+	// SSE 注释行，用于关闭连接的额外信号
+	c.Writer.WriteString(": connection closed\n\n")
 	flusher.Flush()
+
+	logger.Info("SSE stream completed, connection will close")
 }
 
+// sendSSE 发送SSE事件到客户端
+// 参数：
+//   - c: Gin上下文
+//   - flusher: HTTP Flusher用于立即刷新数据到客户端
+//   - event: SSE事件类型
+//   - data: 要发送的数据对象
+//
+// 说明：按照SSE协议格式发送事件，确保数据立即flush到客户端
+func sendSSE(c *gin.Context, flusher http.Flusher, event string, data interface{}) {
+	// 将数据转换为紧凑的JSON字符串（不含换行符）
+	jsonData := toJson(data)
+
+	// 构建SSE协议格式：event行 + data行 + 空行结束
+	eventLine := fmt.Sprintf("event: %s\n", event)
+	dataLine := fmt.Sprintf("data: %s\n\n", jsonData)
+
+	// 写入事件类型行，失败则记录错误并返回
+	if _, err := c.Writer.WriteString(eventLine); err != nil {
+		logger.Error(fmt.Sprintf("Failed to write SSE event: %v", err))
+		return
+	}
+
+	// 写入数据行，失败则记录错误并返回
+	if _, err := c.Writer.WriteString(dataLine); err != nil {
+		logger.Error(fmt.Sprintf("Failed to write SSE data: %v", err))
+		return
+	}
+
+	// 立即刷新缓冲区，确保数据发送到客户端
+	flusher.Flush()
+	logger.Debug(fmt.Sprintf("SSE sent: event=%s, data_len=%d", event, len(jsonData)))
+}
+
+// toJson 将数据对象转换为紧凑的JSON字符串
+// 参数：
+//   - data: 要转换的数据对象
+//
+// 返回：紧凑的JSON字符串（不含换行符，符合SSE协议要求）
+// 说明：使用json.Marshal确保JSON紧凑输出，字符串中的换行符会被转义为\n
 func toJson(data interface{}) string {
-	var buf strings.Builder
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(data); err != nil {
+	// 使用json.Marshal生成紧凑JSON，避免真实换行符破坏SSE格式
+	result, err := json.Marshal(data)
+	if err != nil {
+		logger.Error(fmt.Sprintf("JSON marshal error: %v", err))
 		return "{}"
 	}
-	result := buf.String()
-	if len(result) > 0 && result[len(result)-1] == '\n' {
-		result = result[:len(result)-1]
-	}
-	return result
+	return string(result)
 }
 
 // GetSessionHistory 获取会话历史记录
@@ -290,11 +324,11 @@ var GlobalChatHandler *ChatHandler
 
 // InitChatHandler 初始化对话处理器
 func InitChatHandler() {
-	handler, err := NewChatHandler(ragService, mcpService, agentService)
+	handler, err := NewChatHandler(ragService, mcpService, agentService, tokenService)
 	if err != nil {
 		logger.Error("初始化ChatHandler失败: " + err.Error())
 		return
 	}
 	GlobalChatHandler = handler
-	logger.Info("ChatHandler初始化成功(已启用RAG和MCP功能)")
+	logger.Info("ChatHandler初始化成功(已启用RAG、MCP和Token统计功能)")
 }

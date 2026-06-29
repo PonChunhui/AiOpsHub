@@ -1,5 +1,12 @@
 /* AiOps智能运维平台 - 全局公共样式 */
 
+/* ===== 强制重置浏览器默认样式 ===== */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+}
+
 /* ===== 颜色变量 ===== */
 :root {
   --primary-color: #3b82f6;

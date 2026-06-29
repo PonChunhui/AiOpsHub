@@ -116,7 +116,7 @@ func Init() error {
 	viper.SetDefault("jwt.secret", "aiops-jwt-secret-key-2024")
 	viper.SetDefault("jwt.expire", "24h")
 
-	viper.SetDefault("log.level", "debug")
+	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.format", "console")
 
 	if err := viper.ReadInConfig(); err != nil {

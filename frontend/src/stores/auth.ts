@@ -24,7 +24,6 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('username', username.value)
         localStorage.setItem('userId', userId.value)
         
-        ElMessage.success('登录成功')
         return true
       } else {
         ElMessage.error(res.message || '登录失败')
@@ -63,6 +62,18 @@ export const useAuthStore = defineStore('auth', () => {
     return true
   }
   
+  const clear = () => {
+    token.value = ''
+    username.value = ''
+    userId.value = ''
+    email.value = ''
+    
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('email')
+  }
+  
   return {
     token,
     username,
@@ -71,6 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     logout,
-    checkAuth
+    checkAuth,
+    clear
   }
 })

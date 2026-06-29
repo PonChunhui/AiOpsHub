@@ -49,7 +49,7 @@ func (s *MCPService) Create(ctx context.Context, name, description, url, authTyp
 	s.clients[server.ID] = mcp.NewClient(url, authType, authToken)
 	s.mu.Unlock()
 
-	logger.Info(fmt.Sprintf("MCP Server created: %s (%s)", name, url))
+	logger.Debug(fmt.Sprintf("MCP Server created: %s (%s)", name, url))
 	return server, nil
 }
 
@@ -93,7 +93,7 @@ func (s *MCPService) Update(ctx context.Context, id string, name, description, u
 	s.clients[id] = mcp.NewClient(server.URL, server.AuthType, server.AuthToken)
 	s.mu.Unlock()
 
-	logger.Info(fmt.Sprintf("MCP Server updated: %s", id))
+	logger.Debug(fmt.Sprintf("MCP Server updated: %s", id))
 	return server, nil
 }
 
@@ -106,7 +106,7 @@ func (s *MCPService) Delete(id string) error {
 	delete(s.clients, id)
 	s.mu.Unlock()
 
-	logger.Info(fmt.Sprintf("MCP Server deleted: %s", id))
+	logger.Debug(fmt.Sprintf("MCP Server deleted: %s", id))
 	return nil
 }
 

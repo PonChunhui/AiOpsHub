@@ -9,6 +9,7 @@ import './styles/common.css'
 import './styles/sidebar.css'
 import './styles/header.css'
 import './styles/login.css'
+import './styles/document-editor.css'
 
 const app = createApp(App)
 const pinia = createPinia()

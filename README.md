@@ -14,8 +14,31 @@
   - 消息总线：Redis Pub/Sub实现
   - 状态同步：实时状态管理
   - 冲突解决：分布式锁 + 结果投票机制
+- **AI对话系统**（新增）：
+  - 流式对话：SSE实时推送AI回复
+  - 多轮对话：支持上下文记忆(最多10轮)
+  - 会话管理：完整的对话历史记录
+  - Markdown渲染：前端支持代码高亮
+- **RAG知识检索**（新增）：
+  - 自动检索：对话时自动从Milvus检索相关知识
+  - 上下文注入：将知识无缝融入对话
+  - 向量化存储：基于Milvus的高性能向量检索
+  - 配置可控：通过配置启用/禁用RAG功能
+- **MCP工具集成**（新增）：
+  - 工具管理：注册和配置外部工具服务(Jenkins、K8s等)
+  - 自动调用：AI识别意图并自动调用工具
+  - 结果处理：智能处理工具返回结果
+  - Session管理：支持长连接和Session复用
+- **智能Agent路由**（新增）：
+  - 意图识别：分析用户问题类型
+  - 自动匹配：选择最合适的Agent处理问题
+  - SystemPrompt注入：使用Agent专属系统提示增强专业性
+- **Token统计服务**（新增）：
+  - Token记录：记录每次LLM调用的Token消耗
+  - 成本计算：根据模型定价计算API成本
+  - 统计分析：按会话/Agent维度统计Token使用
 - **WebSocket实时推送**：前端实时接收工作流执行状态
-- **前端Vue3界面**：现代化响应式UI
+- **前端Vue3界面**：现代化响应式UI，包含AI助手聊天界面
 
 ## 系统架构
 
@@ -368,7 +391,176 @@ AiOpsHub/
 
 ## API示例
 
-### 1. 执行协作工作流
+### 1. AI对话系统 (新增)
+
+#### 创建对话会话
+
+```bash
+POST /api/v1/chat/sessions
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "title": "运维问题咨询",
+  "model": "qwen3.7-max"
+}
+
+Response:
+{
+  "message": "会话创建成功",
+  "data": {
+    "id": "session-123",
+    "title": "运维问题咨询",
+    "model": "qwen3.7-max",
+    "status": "active"
+  }
+}
+```
+
+#### 发送消息(流式响应)
+
+```bash
+POST /api/v1/chat/messages/stream
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "session_id": "session-123",
+  "content": "订单服务响应很慢，帮我分析原因"
+}
+
+Response (SSE流式):
+event: user_message
+data: {"id":"msg-1","role":"user","content":"订单服务响应很慢..."}
+
+event: rag_references
+data: [{"title":"服务响应慢排查指南","score":0.85}]
+
+event: chunk
+data: {"content":"根"}
+
+event: chunk
+data: {"content":"据"}
+
+event: chunk
+data: {"content":"知识库"}
+
+event: done
+data: {"message":"流式输出完成"}
+```
+
+#### 发送消息(非流式)
+
+```bash
+POST /api/v1/chat/messages
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "session_id": "session-123",
+  "content": "如何排查Pod启动失败的问题"
+}
+
+Response:
+{
+  "message": "消息发送成功",
+  "ai_response": "排查Pod启动失败可以从以下几个方面入手...",
+  "user_message": {...},
+  "ai_message": {...},
+  "rag_references": [
+    {
+      "title": "Pod启动失败排查指南",
+      "category": "troubleshooting",
+      "score": 0.92
+    }
+  ]
+}
+```
+
+### 2. RAG知识检索 (新增)
+
+#### 搜索知识
+
+```bash
+POST /api/v1/rag/search
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "query": "服务响应慢排查方法",
+  "top_k": 3
+}
+
+Response:
+{
+  "results": [
+    {
+      "document": {
+        "id": "doc-1",
+        "title": "服务响应慢排查指南",
+        "category": "troubleshooting"
+      },
+      "score": 0.85
+    }
+  ]
+}
+```
+
+#### 创建知识文档
+
+```bash
+POST /api/v1/rag/documents
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "title": "Pod启动失败排查方法",
+  "content": "# 排查步骤\n1. 查看Pod状态\n2. 检查事件日志\n3. 分析容器日志...",
+  "category": "troubleshooting",
+  "tags": ["Pod", "Kubernetes", "排查"]
+}
+```
+
+### 3. MCP工具调用 (新增)
+
+#### 创建MCP Server
+
+```bash
+POST /api/v1/mcp/servers
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "name": "Jenkins Server",
+  "description": "CI/CD工具集成",
+  "url": "http://jenkins.example.com:8080",
+  "auth_type": "token",
+  "auth_token": "your-jenkins-token"
+}
+```
+
+#### 获取工具列表
+
+```bash
+GET /api/v1/mcp/servers/:id/tools
+Authorization: Bearer <token>
+
+Response:
+{
+  "tools": [
+    {
+      "name": "trigger_build",
+      "description": "触发Jenkins构建"
+    },
+    {
+      "name": "get_build_status",
+      "description": "获取构建状态"
+    }
+  ]
+}
+```
+
+### 4. 执行协作工作流
 
 ```bash
 POST /api/v1/workflows/collaboration

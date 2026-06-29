@@ -30,11 +30,30 @@ type ChatMessage struct {
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime;index"`            // 创建时间
 }
 
+// ChatMessageResponse 用于API响应的消息结构
+// RAGReferences字段返回数组而不是JSON字符串
+type ChatMessageResponse struct {
+	ID            string                   `json:"id"`
+	SessionID     string                   `json:"session_id"`
+	Role          string                   `json:"role"`
+	Content       string                   `json:"content"`
+	Tokens        int                      `json:"tokens"`
+	RAGReferences []map[string]interface{} `json:"rag_references"`
+	CreatedAt     time.Time                `json:"created_at"`
+}
+
 // ChatSessionWithMessages 对话会话包含消息的结构
 // 用于返回包含消息列表的会话信息
 type ChatSessionWithMessages struct {
 	ChatSession
 	Messages []ChatMessage `json:"messages"` // 会话中的消息列表
+}
+
+// ChatSessionWithMessagesResponse 用于API响应的会话结构
+// Messages字段使用ChatMessageResponse类型
+type ChatSessionWithMessagesResponse struct {
+	ChatSession
+	Messages []ChatMessageResponse `json:"messages"` // 会话中的消息列表
 }
 
 // GenerateChatID 生成对话ID

@@ -26,8 +26,8 @@ func NewAgentRouter(agentSvc *AgentService) *AgentRouter {
 // RouteAgent 智能路由选择 Agent
 // 返回最适合处理用户问题的 Agent
 func (r *AgentRouter) RouteAgent(ctx context.Context, userMessage string) (*model.Agent, error) {
-	logger.Info(fmt.Sprintf("=== Agent Router: 分析用户问题 ==="))
-	logger.Info(fmt.Sprintf("用户消息: %s", truncateContent(userMessage, 100)))
+	logger.Debug(fmt.Sprintf("=== Agent Router: 分析用户问题 ==="))
+	logger.Debug(fmt.Sprintf("用户消息: %s", truncateContent(userMessage, 100)))
 
 	// 第一步：规则路由（快速匹配）
 	agent := r.routeByRules(userMessage)
@@ -44,7 +44,7 @@ func (r *AgentRouter) RouteAgent(ctx context.Context, userMessage string) (*mode
 	}
 
 	// 如果没有匹配的 Agent，返回默认 Agent（或 nil 表示不使用 Agent）
-	logger.Info("⚠️ 未找到匹配的 Agent，使用默认模式")
+	logger.Debug("⚠️ 未找到匹配的 Agent，使用默认模式")
 	return nil, nil
 }
 
@@ -172,7 +172,7 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 					score: score,
 					count: matchCount,
 				})
-				logger.Info(fmt.Sprintf("  Agent %s 匹配 %d 个关键词，得分: %d", agent.Name, matchCount, score))
+				logger.Debug(fmt.Sprintf("  Agent %s 匹配 %d 个关键词，得分: %d", agent.Name, matchCount, score))
 			}
 		}
 	}
@@ -183,7 +183,7 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 			if strings.Contains(userMessage, keyword) {
 				for _, agent := range agents {
 					if agent.ID == agentID {
-						logger.Info(fmt.Sprintf("  特殊关键词 '%s' 匹配 Agent: %s", keyword, agent.Name))
+						logger.Debug(fmt.Sprintf("  特殊关键词 '%s' 匹配 Agent: %s", keyword, agent.Name))
 						return &agent
 					}
 				}
@@ -199,7 +199,7 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 				bestMatch = match
 			}
 		}
-		logger.Info(fmt.Sprintf("  最佳匹配: %s (得分: %d, 匹配关键词: %d)", bestMatch.agent.Name, bestMatch.score, bestMatch.count))
+		logger.Debug(fmt.Sprintf("  最佳匹配: %s (得分: %d, 匹配关键词: %d)", bestMatch.agent.Name, bestMatch.score, bestMatch.count))
 		return bestMatch.agent
 	}
 
@@ -246,7 +246,7 @@ Agent ID:
 	// 目前先用简单的关键词匹配作为演示
 	// 实际使用时需要调用 ChatService 的 LLM
 
-	logger.Info("LLM 路由提示: " + truncateContent(selectionPrompt, 200))
+	logger.Debug("LLM 路由提示: " + truncateContent(selectionPrompt, 200))
 
 	// 暂时返回 nil，等后续集成 LLM
 	return nil

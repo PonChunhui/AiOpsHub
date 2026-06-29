@@ -27,13 +27,16 @@ func (r *RAGRepository) GetByID(id string) (*model.RAGDocument, error) {
 	return &doc, nil
 }
 
-func (r *RAGRepository) List(category string, search string, page, pageSize int) ([]model.RAGDocument, int64, error) {
+func (r *RAGRepository) List(docType string, component string, search string, page, pageSize int) ([]model.RAGDocument, int64, error) {
 	var docs []model.RAGDocument
 	var total int64
 
 	query := r.db.Model(&model.RAGDocument{})
-	if category != "" {
-		query = query.Where("category = ?", category)
+	if docType != "" {
+		query = query.Where("doc_type = ?", docType)
+	}
+	if component != "" {
+		query = query.Where("component = ?", component)
 	}
 	if search != "" {
 		query = query.Where("title LIKE ? OR content LIKE ?", "%"+search+"%", "%"+search+"%")

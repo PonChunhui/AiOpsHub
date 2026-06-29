@@ -1,5 +1,6 @@
 @import './base.css';
 
+/* ===== 应用根容器样式 ===== */
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -7,6 +8,7 @@
   font-weight: normal;
 }
 
+/* ===== 链接样式 ===== */
 a,
 .green {
   text-decoration: none;
@@ -21,10 +23,15 @@ a,
   }
 }
 
+/* ===== 响应式布局 ===== */
 @media (min-width: 1024px) {
+  /* 确保body无margin和padding */
   body {
     display: flex;
     place-items: center;
+    /* 强制消除浏览器默认的8px margin */
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   #app {

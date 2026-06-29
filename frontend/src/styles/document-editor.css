@@ -1,0 +1,154 @@
+/* 文档编辑器样式 */
+
+/* Markdown预览样式 */
+.markdown-preview {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+}
+
+.markdown-preview h1 {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 20px 0 15px 0;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+
+.markdown-preview h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 18px 0 12px 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.markdown-preview h3 {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 15px 0 10px 0;
+}
+
+.markdown-preview h4 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 12px 0 8px 0;
+}
+
+.markdown-preview p {
+  margin: 10px 0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 10px 0;
+  padding-left: 30px;
+}
+
+.markdown-preview li {
+  margin: 5px 0;
+}
+
+.markdown-preview code {
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 13px;
+  color: #c7254e;
+}
+
+.markdown-preview pre {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 15px 0;
+}
+
+.markdown-preview pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #333;
+}
+
+.markdown-preview blockquote {
+  border-left: 4px solid #ddd;
+  padding: 10px 15px;
+  margin: 15px 0;
+  background-color: #f9f9f9;
+  color: #666;
+}
+
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 15px 0;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-preview th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.markdown-preview tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.markdown-preview a {
+  color: #409EFF;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+.markdown-preview strong {
+  font-weight: bold;
+}
+
+.markdown-preview em {
+  font-style: italic;
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 20px 0;
+}
+
+/* 文档内容样式 */
+.document-content {
+  background-color: #f5f7fa;
+  padding: 20px;
+  border-radius: 4px;
+  max-height: 500px;
+  overflow: auto;
+}
+
+/* 预览对话框样式 */
+.preview-dialog .preview-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.preview-dialog .preview-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.preview-dialog .markdown-preview {
+  max-height: 60vh;
+  overflow-y: auto;
+}

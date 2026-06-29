@@ -24,12 +24,6 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/test',
-      name: 'test',
-      component: () => import('@/views/Test.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/agents',
       name: 'agents',
       component: () => import('@/views/Agents.vue'),
@@ -54,45 +48,21 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/system-monitor',
-      name: 'system-monitor',
-      component: () => import('@/views/SystemMonitor.vue'),
-      meta: { requiresAuth: true }
-    },
-{
       path: '/knowledge-base',
       name: 'knowledge-base',
       component: () => import('@/views/KnowledgeBase.vue'),
       meta: { requiresAuth: true }
     },
     {
+      path: '/knowledge-base/edit/:id?',
+      name: 'knowledge-base-edit',
+      component: () => import('@/views/DocumentEditor.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/users-manage',
       name: 'users-manage',
       component: () => import('@/views/UserManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/monitor-dashboard',
-      name: 'monitor-dashboard',
-      component: () => import('@/views/MonitorDashboard.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/log-query',
-      name: 'log-query',
-      component: () => import('@/views/LogQuery.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/remediation',
-      name: 'remediation',
-      component: () => import('@/views/Remediation.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/kubernetes',
-      name: 'kubernetes',
-      component: () => import('@/views/KubernetesManage.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -125,7 +95,6 @@ router.beforeEach((to, from, next) => {
       next()
     }
   } else {
-    // 登录页、注册页不需要认证
     next()
   }
 })

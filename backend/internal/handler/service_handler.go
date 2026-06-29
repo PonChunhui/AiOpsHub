@@ -7,31 +7,37 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aiops/AiOpsHub/backend/internal/database"
+	"github.com/aiops/AiOpsHub/backend/internal/repository"
 	"github.com/aiops/AiOpsHub/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
 var (
-	ragService        *service.RAGService
-	mcpService        *service.MCPService
-	prometheusService *service.PrometheusService
-	tokenService      *service.TokenService
-	milvusService     *service.MilvusService
-	embeddingService  *service.EmbeddingService
-	agentService      *service.AgentService
+	ragService       *service.RAGService
+	mcpService       *service.MCPService
+	tokenService     *service.TokenService
+	milvusService    *service.MilvusService
+	embeddingService *service.EmbeddingService
+	agentService     *service.AgentService
 )
 
 func InitServices() {
 	initRAGService()
 	initMCPService()
-	prometheusService = service.NewPrometheusService(viper.GetString("prometheus.url"))
-	tokenService = service.NewTokenService()
+	initTokenService()
 
 	agentService = service.NewAgentService()
 	if err := agentService.InitializePresets(); err != nil {
 		fmt.Printf("Failed to initialize preset agents: %v\n", err)
 	}
+}
+
+func initTokenService() {
+	tokenRepo := repository.NewTokenRepository(database.DB)
+	tokenService = service.NewTokenServiceWithRepo(tokenRepo)
+	fmt.Println("Token Service initialized with database persistence")
 }
 
 func initMCPService() {
@@ -139,7 +145,8 @@ func GetRAGContext(c *gin.Context) {
 }
 
 func ListRAGDocuments(c *gin.Context) {
-	category := c.Query("category")
+	docType := c.Query("doc_type")
+	component := c.Query("component")
 	search := c.Query("search")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
@@ -151,7 +158,7 @@ func ListRAGDocuments(c *gin.Context) {
 		pageSize = 10
 	}
 
-	docs, total, err := ragService.ListDocuments(c.Request.Context(), category, search, page, pageSize)
+	docs, total, err := ragService.ListDocuments(c.Request.Context(), docType, component, search, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -183,10 +190,11 @@ func GetRAGDocument(c *gin.Context) {
 
 func AddRAGDocument(c *gin.Context) {
 	var req struct {
-		Title    string   `json:"title" binding:"required"`
-		Content  string   `json:"content" binding:"required"`
-		Category string   `json:"category"`
-		Tags     []string `json:"tags"`
+		Title     string   `json:"title" binding:"required"`
+		Content   string   `json:"content" binding:"required"`
+		DocType   string   `json:"doc_type"`  // 文档类型：sop / faq / alert
+		Component string   `json:"component"` // 组件名：mysql / k8s / redis
+		Tags      []string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -202,11 +210,12 @@ func AddRAGDocument(c *gin.Context) {
 	now := time.Now().Format(time.RFC3339)
 
 	doc := service.KnowledgeDocument{
-		ID:       fmt.Sprintf("kb-%d", time.Now().Unix()),
-		Title:    req.Title,
-		Content:  req.Content,
-		Category: req.Category,
-		Tags:     req.Tags,
+		ID:        fmt.Sprintf("kb-%d", time.Now().Unix()),
+		Title:     req.Title,
+		Content:   req.Content,
+		DocType:   req.DocType,
+		Component: req.Component,
+		Tags:      req.Tags,
 		Metadata: map[string]interface{}{
 			"created_at": now,
 			"updated_at": now,
@@ -232,10 +241,12 @@ func UpdateRAGDocument(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Title    string   `json:"title"`
-		Content  string   `json:"content"`
-		Category string   `json:"category"`
-		Tags     []string `json:"tags"`
+		Title     string                 `json:"title"`
+		Content   string                 `json:"content"`
+		DocType   string                 `json:"doc_type"`  // 文档类型：sop / faq / alert
+		Component string                 `json:"component"` // 组件名：mysql / k8s / redis
+		Tags      []string               `json:"tags"`
+		Metadata  map[string]interface{} `json:"metadata"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -243,26 +254,18 @@ func UpdateRAGDocument(c *gin.Context) {
 		return
 	}
 
-	username, exists := c.Get("username")
-	if !exists {
-		username = "unknown"
+	metadata := req.Metadata
+	if metadata == nil {
+		metadata = map[string]interface{}{}
 	}
-
-	oldDoc, err := ragService.GetDocument(c.Request.Context(), id)
-	metadata := map[string]interface{}{}
-	if err == nil && oldDoc.Metadata != nil {
-		if createdAt, ok := oldDoc.Metadata["created_at"]; ok {
-			metadata["created_at"] = createdAt
-		}
-		if createdBy, ok := oldDoc.Metadata["created_by"]; ok {
-			metadata["created_by"] = createdBy
-		}
-	}
-
 	metadata["updated_at"] = time.Now().Format(time.RFC3339)
-	metadata["updated_by"] = username
 
-	doc, err := ragService.UpdateDocument(c.Request.Context(), id, req.Title, req.Content, req.Category, req.Tags, metadata)
+	username, exists := c.Get("username")
+	if exists {
+		metadata["updated_by"] = username
+	}
+
+	doc, err := ragService.UpdateDocument(c.Request.Context(), id, req.Title, req.Content, req.DocType, req.Component, req.Tags, metadata)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -291,74 +294,6 @@ func DeleteRAGDocument(c *gin.Context) {
 }
 
 // ==================== Prometheus监控 ====================
-
-func QueryPrometheus(c *gin.Context) {
-	query := c.Query("query")
-
-	if query == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "query required"})
-		return
-	}
-
-	metrics, err := prometheusService.Query(c.Request.Context(), query)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"query":   query,
-		"metrics": metrics,
-		"count":   len(metrics),
-	})
-}
-
-func GetServiceMetricsHandler(c *gin.Context) {
-	serviceName := c.Param("service")
-
-	if serviceName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "service name required"})
-		return
-	}
-
-	metrics, err := prometheusService.GetServiceMetrics(c.Request.Context(), serviceName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, metrics)
-}
-
-func GetTopServicesHandler(c *gin.Context) {
-	metricName := c.Query("metric")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "5"))
-
-	services, err := prometheusService.GetTopServices(c.Request.Context(), metricName, limit)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"metric":   metricName,
-		"services": services,
-		"count":    len(services),
-	})
-}
-
-func GetActiveAlerts(c *gin.Context) {
-	alerts, err := prometheusService.GetAlerts(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"alerts": alerts,
-		"count":  len(alerts),
-	})
-}
 
 // ==================== Token统计 ====================
 

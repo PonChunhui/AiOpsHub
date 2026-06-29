@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/aiops/AiOpsHub/backend/internal/model"
 	"github.com/aiops/AiOpsHub/backend/internal/repository"
@@ -28,19 +27,19 @@ type ChatService struct {
 	mcpSvc      *MCPService
 	agentSvc    *AgentService
 	agentRouter *AgentRouter
+	tokenSvc    *TokenService
 	maxCtx      int
 	enableRAG   bool
 }
 
-func NewChatService(llmConfig llm.EinoLLMConfig, ragSvc *RAGService, mcpSvc *MCPService, agentSvc *AgentService) (*ChatService, error) {
+func NewChatService(llmConfig llm.EinoLLMConfig, ragSvc *RAGService, mcpSvc *MCPService, agentSvc *AgentService, tokenSvc *TokenService) (*ChatService, error) {
 	einoLLM, err := llm.NewEinoLLM(llmConfig)
 	if err != nil {
 		return nil, fmt.Errorf("创建LLM失败: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("NewChatService: ragSvc=%v, mcpSvc=%v, agentSvc=%v", ragSvc != nil, mcpSvc != nil, agentSvc != nil))
+	logger.Debug(fmt.Sprintf("NewChatService: ragSvc=%v, mcpSvc=%v, agentSvc=%v, tokenSvc=%v", ragSvc != nil, mcpSvc != nil, agentSvc != nil, tokenSvc != nil))
 
-	// 创建 Agent 路由器
 	agentRouter := NewAgentRouter(agentSvc)
 
 	return &ChatService{
@@ -50,6 +49,7 @@ func NewChatService(llmConfig llm.EinoLLMConfig, ragSvc *RAGService, mcpSvc *MCP
 		mcpSvc:      mcpSvc,
 		agentSvc:    agentSvc,
 		agentRouter: agentRouter,
+		tokenSvc:    tokenSvc,
 		maxCtx:      10,
 		enableRAG:   ragSvc != nil,
 	}, nil
@@ -72,7 +72,7 @@ func (s *ChatService) CreateSession(userID, title, modelName string) (*model.Cha
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("创建会话成功: %s", session.ID))
+	logger.Debug(fmt.Sprintf("创建会话成功: %s", session.ID))
 	return session, nil
 }
 
@@ -80,28 +80,23 @@ func (s *ChatService) CreateSession(userID, title, modelName string) (*model.Cha
 // 参数：ctx - 上下文，sessionID - 会话ID，content - 用户消息内容
 // 返回：AI回复内容、用户消息对象、AI消息对象和错误信息
 func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string) (string, *model.ChatMessage, *model.ChatMessage, []map[string]interface{}, error) {
-	logger.Info(fmt.Sprintf("=== SendMessage START: session=%s ===", sessionID))
-	logger.Info(fmt.Sprintf("enableRAG=%v, ragSvc=%v", s.enableRAG, s.ragSvc != nil))
+	logger.Debug(fmt.Sprintf("=== SendMessage START: session=%s ===", sessionID))
 
-	// 智能路由选择 Agent
 	selectedAgent, err := s.agentRouter.RouteAgent(ctx, content)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Agent 路由失败: %v", err))
 	} else if selectedAgent != nil {
 		logger.Info(fmt.Sprintf("✅ 智能路由选择 Agent: %s (%s)", selectedAgent.Name, selectedAgent.ID))
 	}
-	logger.Info(fmt.Sprintf("enableRAG=%v, ragSvc=%v", s.enableRAG, s.ragSvc != nil))
 
-	// RAG引用的知识库文档
 	var ragReferences []map[string]interface{}
+	var ragRefsJSON string
 
-	// 获取会话信息
-	session, err := s.repo.GetSessionByID(sessionID)
+	_, err = s.repo.GetSessionByID(sessionID)
 	if err != nil {
 		return "", nil, nil, nil, fmt.Errorf("获取会话失败: %w", err)
 	}
 
-	// 创建用户消息
 	userMessage := &model.ChatMessage{
 		SessionID: sessionID,
 		Role:      "user",
@@ -111,46 +106,47 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 		return "", nil, nil, nil, fmt.Errorf("保存用户消息失败: %w", err)
 	}
 
-	// 获取历史消息构建上下文
 	historyMessages, err := s.repo.GetRecentMessages(sessionID, s.maxCtx)
 	if err != nil {
 		logger.Error(fmt.Sprintf("获取历史消息失败: %v", err))
-		// 如果获取失败，继续使用单轮对话
 	}
 
-	// 构建完整的对话提示（包含历史上下文和RAG知识）
 	var promptBuilder strings.Builder
 
-	// 如果智能路由选择了 Agent，使用 Agent 的 SystemPrompt
 	if selectedAgent != nil && selectedAgent.SystemPrompt != "" {
 		logger.Info(fmt.Sprintf("使用 Agent SystemPrompt: %s", selectedAgent.Name))
 		promptBuilder.WriteString(selectedAgent.SystemPrompt)
 		promptBuilder.WriteString("\n\n")
 	}
 
-	// 如果启用了RAG，先检索相关知识
 	if s.enableRAG && s.ragSvc != nil {
 		logger.Info(fmt.Sprintf("RAG已启用,正在检索相关知识: query=%s", content))
-
-		// 检索知识库文档
 		searchResults, err := s.ragSvc.SearchKnowledge(ctx, content, 3)
 		if err != nil {
 			logger.Error(fmt.Sprintf("RAG检索失败: %v", err))
 		} else if len(searchResults) > 0 {
 			logger.Info(fmt.Sprintf("RAG检索成功,找到%d个相关文档", len(searchResults)))
 
-			// 构建RAG引用信息
 			for _, result := range searchResults {
 				ragReferences = append(ragReferences, map[string]interface{}{
-					"id":       result.Document.ID,
-					"title":    result.Document.Title,
-					"category": result.Document.Category,
-					"score":    result.Score,
-					"snippet":  truncateContent(result.Document.Content, 100), // 截取前100字符
+					"id":        result.Document.ID,
+					"title":     result.Document.Title,
+					"doc_type":  result.Document.DocType,
+					"component": result.Document.Component,
+					"score":     result.Score,
+					"snippet":   truncateContent(result.Document.Content, 100),
 				})
 			}
 
-			// 构建知识上下文
+			if len(ragReferences) > 0 {
+				refsBytes, err := json.Marshal(ragReferences)
+				if err != nil {
+					logger.Error(fmt.Sprintf("序列化RAG引用失败: %v", err))
+				} else {
+					ragRefsJSON = string(refsBytes)
+				}
+			}
+
 			knowledgeContext, err := s.ragSvc.GetContextForQuery(ctx, content, 1000)
 			if err != nil {
 				logger.Error(fmt.Sprintf("构建知识上下文失败: %v", err))
@@ -160,13 +156,12 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 				promptBuilder.WriteString("\n")
 			}
 		} else {
-			logger.Info("RAG检索完成,未找到相关知识")
+			logger.Debug("RAG检索完成,未找到相关知识")
 		}
 	} else {
-		logger.Info("RAG未启用或RAGService为nil")
+		logger.Debug("RAG未启用或RAGService为nil")
 	}
 
-	// 添加历史对话记录
 	if len(historyMessages) > 0 {
 		promptBuilder.WriteString("以下是历史对话记录:\n\n")
 		for _, msg := range historyMessages {
@@ -177,7 +172,6 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 			}
 		}
 
-		// MCP 工具集成
 		if s.mcpSvc != nil {
 			logger.Info("MCP已启用,正在加载工具...")
 			mcpTools, err := s.mcpSvc.GetAllActiveTools(ctx)
@@ -190,7 +184,6 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 				}
 				logger.Info(fmt.Sprintf("MCP加载成功,共%d个工具", totalTools))
 
-				// 添加工具信息到 prompt
 				promptBuilder.WriteString("\n可用工具:\n")
 				for serverName, tools := range mcpTools {
 					promptBuilder.WriteString(fmt.Sprintf("### %s:\n", serverName))
@@ -206,9 +199,8 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 		promptBuilder.WriteString("\n当前用户问题: ")
 		promptBuilder.WriteString(content)
 	} else {
-		// MCP 工具集成
 		if s.mcpSvc != nil {
-			logger.Info("MCP已启用,正在加载工具...")
+			logger.Debug("MCP已启用,正在加载工具...")
 			mcpTools, err := s.mcpSvc.GetAllActiveTools(ctx)
 			if err != nil {
 				logger.Error(fmt.Sprintf("获取MCP工具失败: %v", err))
@@ -219,7 +211,6 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 				}
 				logger.Info(fmt.Sprintf("MCP加载成功,共%d个工具", totalTools))
 
-				// 添加工具信息到 prompt
 				promptBuilder.WriteString("\n可用工具:\n")
 				for serverName, tools := range mcpTools {
 					promptBuilder.WriteString(fmt.Sprintf("### %s:\n", serverName))
@@ -242,23 +233,35 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 
 	fullPrompt := promptBuilder.String()
 
-	// 调用LLM生成回复
-	aiResponse, err := s.llm.Generate(ctx, fullPrompt)
+	var agentID string
+	if selectedAgent != nil {
+		agentID = selectedAgent.ID
+	} else {
+		agentID = "default"
+	}
+
+	var aiResponse string
+
+	if s.tokenSvc != nil {
+		recorder := llm.NewTokenRecorder(sessionID, agentID, "qwen3.7-max", s.tokenSvc)
+		handler := recorder.CreateCallbackHandler()
+		aiResponse, _, err = s.llm.GenerateWithCallback(ctx, fullPrompt, handler)
+	} else {
+		aiResponse, err = s.llm.Generate(ctx, fullPrompt)
+	}
+
 	if err != nil {
 		logger.Error(fmt.Sprintf("LLM生成回复失败: %v", err))
 		return "", userMessage, nil, ragReferences, fmt.Errorf("生成回复失败: %w", err)
 	}
 
-	// 检查是否有工具调用
 	finalResponse := aiResponse
 	if s.mcpSvc != nil && strings.Contains(aiResponse, "```tool_call") {
-		logger.Info("检测到工具调用请求，准备执行工具并让 LLM 处理结果")
+		logger.Debug("检测到工具调用请求，准备执行工具并让 LLM 处理结果")
 		toolCalls := s.parseToolCalls(aiResponse)
 
-		// 执行所有工具并收集结果
 		var toolResults []string
 		for _, tc := range toolCalls {
-			// 安全地提取工具参数
 			toolName, ok := tc["tool"].(string)
 			if !ok {
 				logger.Error("工具调用缺少 tool 字段")
@@ -278,87 +281,67 @@ func (s *ChatService) SendMessage(ctx context.Context, sessionID, content string
 			}
 
 			logger.Info(fmt.Sprintf("执行工具: %s.%s", serverName, toolName))
-
 			result, err := s.executeMCPTool(ctx, serverName, toolName, arguments)
 			if err != nil {
 				logger.Error(fmt.Sprintf("工具执行失败: %v", err))
 				toolResults = append(toolResults, fmt.Sprintf("工具 %s 执行失败: %v", toolName, err))
 			} else {
 				logger.Info(fmt.Sprintf("工具执行成功: %s，结果长度: %d", toolName, len(result)))
-
-				// 如果结果太大，只保留前 2000 字符
 				if len(result) > 2000 {
-					logger.Info(fmt.Sprintf("工具结果过大（%d 字符），截取前 2000 字符", len(result)))
-					result = result[:2000] + "\n...(数据过大，已截取部分内容)"
+					logger.Debug(fmt.Sprintf("工具结果过大（%d 字符），截取前 2000 字符", len(result)))
+					result = result[:2000]
 				}
-
-				toolResults = append(toolResults, fmt.Sprintf("工具 %s 执行结果:\n%s", toolName, result))
+				toolResults = append(toolResults, result)
 			}
 		}
 
-		// 如果有工具执行结果，构建新的 prompt 让 LLM 处理
 		if len(toolResults) > 0 {
-			toolContext := strings.Join(toolResults, "\n\n")
+			var toolContext strings.Builder
+			toolContext.WriteString("\n\n以下是工具执行结果:\n")
+			for i, result := range toolResults {
+				toolContext.WriteString(fmt.Sprintf("### 工具结果 %d:\n%s\n", i+1, result))
+			}
 
-			// 构建让 LLM 理解工具结果的 prompt
-			processPrompt := fmt.Sprintf(`
-之前的对话中，AI 助手决定调用以下工具来帮助用户：
+			processPrompt := fullPrompt + aiResponse + toolContext.String()
 
-%s
+			logger.Info("让 LLM 处理工具结果并生成自然语言回复")
 
-现在工具已经执行完毕，返回了上述结果。
-请基于这些工具返回的实际数据，用自然、友好的语言回答用户的问题。
-不要简单地重复工具返回的 JSON 数据，而是要：
-1. 理解数据的含义
-2. 提取关键信息
-3. 用通俗易懂的语言向用户解释结果
-4. 如果有错误，说明错误原因并建议解决方案
+			var llmResponse string
+			if s.tokenSvc != nil {
+				recorder := llm.NewTokenRecorder(sessionID, agentID, "qwen3.7-max", s.tokenSvc)
+				handler := recorder.CreateCallbackHandler()
+				llmResponse, _, err = s.llm.GenerateWithCallback(ctx, processPrompt, handler)
+			} else {
+				llmResponse, err = s.llm.Generate(ctx, processPrompt)
+			}
 
-请开始回答：`, toolContext)
-
-			logger.Info("将工具结果发送给 LLM 进行理解和处理")
-
-			// 再次调用 LLM 让它处理工具结果
-			llmResponse, err := s.llm.Generate(ctx, processPrompt)
 			if err != nil {
 				logger.Error(fmt.Sprintf("LLM 处理工具结果失败: %v", err))
-				// 如果 LLM 处理失败，至少返回原始结果
-				finalResponse = fmt.Sprintf("工具已执行成功，但 AI 处理结果时出错:\n\n%s", toolContext)
+				finalResponse = aiResponse + "\n\n工具执行结果:\n" + strings.Join(toolResults, "\n")
 			} else {
-				logger.Info(fmt.Sprintf("LLM 成功处理工具结果，回复长度: %d", len(llmResponse)))
 				finalResponse = llmResponse
 			}
 		}
 	}
 
-	// 创建AI消息
 	aiMessage := &model.ChatMessage{
-		SessionID: sessionID,
-		Role:      "assistant",
-		Content:   finalResponse,
+		SessionID:     sessionID,
+		Role:          "assistant",
+		Content:       finalResponse,
+		RAGReferences: ragRefsJSON,
 	}
 	if err := s.repo.CreateMessage(aiMessage); err != nil {
 		logger.Error(fmt.Sprintf("保存AI消息失败: %v", err))
 		return finalResponse, userMessage, nil, ragReferences, fmt.Errorf("保存AI消息失败: %w", err)
 	}
 
-	// 更新会话的更新时间
-	session.Title = s.generateSessionTitle(content)
-	if err := s.repo.UpdateSession(session); err != nil {
-		logger.Error(fmt.Sprintf("更新会话失败: %v", err))
-	}
-
-	logger.Info(fmt.Sprintf("对话完成 - 会话: %s, 用户消息: %s, AI回复长度: %d",
+	logger.Debug(fmt.Sprintf("对话完成 - 会话: %s, 用户消息: %s, AI回复长度: %d",
 		sessionID, userMessage.ID, len(finalResponse)))
 
 	return finalResponse, userMessage, aiMessage, ragReferences, nil
 }
 
-// GetSessionHistory 获取会话的完整历史记录
-// 参数：sessionID - 会话ID
-// 返回：包含消息列表的会话对象和错误信息
-func (s *ChatService) GetSessionHistory(sessionID string) (*model.ChatSessionWithMessages, error) {
-	// 获取会话信息
+func (s *ChatService) GetSessionHistory(sessionID string) (*model.ChatSessionWithMessagesResponse, error) {
 	session, err := s.repo.GetSessionByID(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("获取会话失败: %w", err)
@@ -370,24 +353,38 @@ func (s *ChatService) GetSessionHistory(sessionID string) (*model.ChatSessionWit
 		return nil, fmt.Errorf("获取消息失败: %w", err)
 	}
 
-	// 将每条消息的RAGReferences JSON字符串解析为数组
+	// 转换为响应格式，并解析RAGReferences字段
+	messageResponses := make([]model.ChatMessageResponse, len(messages))
 	for i := range messages {
+		messageResponses[i] = model.ChatMessageResponse{
+			ID:        messages[i].ID,
+			SessionID: messages[i].SessionID,
+			Role:      messages[i].Role,
+			Content:   messages[i].Content,
+			Tokens:    messages[i].Tokens,
+			CreatedAt: messages[i].CreatedAt,
+		}
+
+		// 解析RAGReferences JSON字符串为数组
 		if messages[i].RAGReferences != "" {
 			var ragRefs []map[string]interface{}
 			if err := json.Unmarshal([]byte(messages[i].RAGReferences), &ragRefs); err != nil {
 				logger.Error(fmt.Sprintf("解析消息RAG引用失败: %v", err))
+				messageResponses[i].RAGReferences = []map[string]interface{}{}
 			} else {
-				// 将解析后的数据添加到metadata中，以便前端访问
-				if messages[i].RAGReferences != "" && len(ragRefs) > 0 {
-					logger.Info(fmt.Sprintf("消息 %s 有 %d 个RAG引用", messages[i].ID, len(ragRefs)))
+				messageResponses[i].RAGReferences = ragRefs
+				if len(ragRefs) > 0 {
+					logger.Debug(fmt.Sprintf("消息 %s 有 %d 个RAG引用", messages[i].ID, len(ragRefs)))
 				}
 			}
+		} else {
+			messageResponses[i].RAGReferences = []map[string]interface{}{}
 		}
 	}
 
-	return &model.ChatSessionWithMessages{
+	return &model.ChatSessionWithMessagesResponse{
 		ChatSession: *session,
-		Messages:    messages,
+		Messages:    messageResponses,
 	}, nil
 }
 
@@ -412,7 +409,7 @@ func (s *ChatService) DeleteSession(sessionID string) error {
 		logger.Error(fmt.Sprintf("删除会话失败: %v", err))
 		return err
 	}
-	logger.Info(fmt.Sprintf("删除会话成功: %s", sessionID))
+	logger.Debug(fmt.Sprintf("删除会话成功: %s", sessionID))
 	return nil
 }
 
@@ -420,9 +417,10 @@ func (s *ChatService) DeleteSession(sessionID string) error {
 // 参数：content - 用户消息内容
 // 返回：生成的标题
 func (s *ChatService) generateSessionTitle(content string) string {
-	// 简单截取前30个字符作为标题
-	if len(content) > 30 {
-		return content[:30] + "..."
+	// 截取前30个字符作为标题，使用rune处理多字节字符
+	runes := []rune(content)
+	if len(runes) > 30 {
+		return string(runes[:30]) + "..."
 	}
 	return content
 }
@@ -431,7 +429,7 @@ func (s *ChatService) generateSessionTitle(content string) string {
 // 参数：ctx - 上下文，sessionID - 会话ID，content - 用户消息内容
 // 返回：流式响应channel、用户消息对象、RAG引用和错误信息
 func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content string) (<-chan string, *model.ChatMessage, []map[string]interface{}, error) {
-	logger.Info(fmt.Sprintf("=== StreamSendMessage START: session=%s ===", sessionID))
+	logger.Debug(fmt.Sprintf("=== StreamSendMessage START: session=%s ===", sessionID))
 
 	var ragReferences []map[string]interface{}
 	var toolCalls []map[string]interface{}
@@ -467,13 +465,13 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 
 	// 如果智能路由选择了 Agent，使用 Agent 的 SystemPrompt
 	if selectedAgent != nil && selectedAgent.SystemPrompt != "" {
-		logger.Info(fmt.Sprintf("使用 Agent SystemPrompt: %s", selectedAgent.Name))
+		logger.Debug(fmt.Sprintf("使用 Agent SystemPrompt: %s", selectedAgent.Name))
 		promptBuilder.WriteString(selectedAgent.SystemPrompt)
 		promptBuilder.WriteString("\n\n")
 	}
 
 	if s.enableRAG && s.ragSvc != nil {
-		logger.Info(fmt.Sprintf("RAG已启用,正在检索相关知识: query=%s", content))
+		logger.Debug(fmt.Sprintf("RAG已启用,正在检索相关知识: query=%s", content))
 
 		searchResults, err := s.ragSvc.SearchKnowledge(ctx, content, 3)
 		if err != nil {
@@ -483,11 +481,12 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 
 			for _, result := range searchResults {
 				ragReferences = append(ragReferences, map[string]interface{}{
-					"id":       result.Document.ID,
-					"title":    result.Document.Title,
-					"category": result.Document.Category,
-					"score":    result.Score,
-					"snippet":  truncateContent(result.Document.Content, 100),
+					"id":        result.Document.ID,
+					"title":     result.Document.Title,
+					"doc_type":  result.Document.DocType,
+					"component": result.Document.Component,
+					"score":     result.Score,
+					"snippet":   truncateContent(result.Document.Content, 100),
 				})
 			}
 
@@ -500,35 +499,44 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 				promptBuilder.WriteString("\n")
 			}
 		} else {
-			logger.Info("RAG检索完成,未找到相关知识")
+			logger.Debug("RAG检索完成,未找到相关知识")
 		}
 	} else {
-		logger.Info("RAG未启用或RAGService为nil")
+		logger.Debug("RAG未启用或RAGService为nil")
 	}
 
 	// MCP 工具集成
 	if s.mcpSvc != nil {
-		logger.Info("MCP已启用,正在加载工具...")
+		logger.Debug("MCP已启用,正在加载工具...")
 		mcpTools, err := s.mcpSvc.GetAllActiveTools(ctx)
 		if err != nil {
 			logger.Error(fmt.Sprintf("获取MCP工具失败: %v", err))
 		} else if len(mcpTools) > 0 {
-			totalTools := 0
-			for _, tools := range mcpTools {
-				totalTools += len(tools)
-			}
-			logger.Info(fmt.Sprintf("MCP加载成功,共%d个工具", totalTools))
+			containsToolCall := strings.Contains(content, "调用工具") ||
+				strings.Contains(content, "执行命令") ||
+				strings.Contains(content, "Jenkins") ||
+				strings.Contains(content, "构建") ||
+				strings.Contains(content, "部署到")
 
-			// 添加工具信息到 prompt
-			promptBuilder.WriteString("\n可用工具:\n")
-			for serverName, tools := range mcpTools {
-				promptBuilder.WriteString(fmt.Sprintf("### %s:\n", serverName))
-				for _, tool := range tools {
-					promptBuilder.WriteString(fmt.Sprintf("- %s: %s\n", tool.Name, tool.Description))
+			if containsToolCall {
+				totalTools := 0
+				for _, tools := range mcpTools {
+					totalTools += len(tools)
 				}
+				logger.Info(fmt.Sprintf("MCP加载成功,共%d个工具（检测到工具调用意图）", totalTools))
+
+				promptBuilder.WriteString("\n可用工具:\n")
+				for serverName, tools := range mcpTools {
+					promptBuilder.WriteString(fmt.Sprintf("### %s:\n", serverName))
+					for _, tool := range tools {
+						promptBuilder.WriteString(fmt.Sprintf("- %s: %s\n", tool.Name, tool.Description))
+					}
+				}
+				promptBuilder.WriteString("\n如果需要使用工具,请按以下格式调用:\n")
+				promptBuilder.WriteString("```tool_call\n{\"tool\": \"工具名称\", \"server\": \"服务器名称\", \"arguments\": {参数}}\n```\n")
+			} else {
+				logger.Debug("用户问题不需要工具调用，跳过 MCP 工具加载")
 			}
-			promptBuilder.WriteString("\n如果需要使用工具,请按以下格式调用:\n")
-			promptBuilder.WriteString("```tool_call\n{\"tool\": \"工具名称\", \"server\": \"服务器名称\", \"arguments\": {参数}}\n```\n")
 		}
 	}
 
@@ -554,31 +562,50 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 
 	fullPrompt := promptBuilder.String()
 
+	// 创建输出channel，缓冲大小100，用于流式传输AI回复
+	// 注意：不要在此等待goroutine完成，应立即返回channel让handler读取
 	outputChan := make(chan string, 100)
-	var wg sync.WaitGroup
 
-	wg.Add(1)
+	// 启动goroutine异步处理流式生成，避免阻塞主流程
 	go func() {
-		defer wg.Done()
+		// goroutine结束时关闭channel，通知handler数据传输完成
 		defer close(outputChan)
 
+		logger.Debug("Starting LLM stream generation...")
+
+		// 调用LLM流式生成接口，获取流式响应channel
 		streamChan, err := s.llm.StreamGenerate(ctx, fullPrompt)
 		if err != nil {
 			logger.Error(fmt.Sprintf("LLM流式生成失败: %v", err))
+			// 发送错误信息到channel，通知前端
 			outputChan <- fmt.Sprintf("生成回复失败: %v", err)
 			return
 		}
 
+		logger.Debug("LLM stream channel obtained, reading chunks...")
+
+		// 用于累积完整响应内容，便于后续工具调用检测
 		var fullResponse strings.Builder
+		chunkCount := 0
+
+		// 从LLM流式channel读取每个chunk并转发到输出channel
 		for chunk := range streamChan {
+			chunkCount++
+			// 记录chunk信息（仅前20字符避免日志过长）
+			logger.Debug(fmt.Sprintf("Received chunk #%d: %s", chunkCount, chunk[:min(20, len(chunk))]))
+			// 累积完整响应
 			fullResponse.WriteString(chunk)
+			// 立即发送chunk到前端，实现实时流式输出
 			outputChan <- chunk
 		}
 
-		// 检查是否有工具调用
+		logger.Debug(fmt.Sprintf("Stream completed, total chunks: %d, total length: %d", chunkCount, fullResponse.Len()))
+
+		// 检查是否有工具调用（MCP工具集成）
 		responseText := fullResponse.String()
 		if strings.Contains(responseText, "```tool_call") {
-			logger.Info("检测到工具调用请求，准备执行工具并让 LLM 处理结果")
+			logger.Debug("检测到工具调用请求，准备执行工具并让 LLM 处理结果")
+			// 解析工具调用请求
 			toolCalls = s.parseToolCalls(responseText)
 
 			// 执行所有工具并收集结果
@@ -604,23 +631,27 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 				}
 
 				logger.Info(fmt.Sprintf("执行工具: %s.%s", serverName, toolName))
+				// 发送工具执行状态到前端
 				outputChan <- fmt.Sprintf("\n🔧 正在执行工具: %s...\n", toolName)
 
+				// 执行MCP工具调用
 				result, err := s.executeMCPTool(ctx, serverName, toolName, arguments)
 				if err != nil {
 					logger.Error(fmt.Sprintf("工具执行失败: %v", err))
 					toolResults = append(toolResults, fmt.Sprintf("工具 %s 执行失败: %v", toolName, err))
+					// 发送失败状态到前端
 					outputChan <- fmt.Sprintf("❌ 工具 %s 执行失败\n", toolName)
 				} else {
 					logger.Info(fmt.Sprintf("工具执行成功: %s，结果长度: %d", toolName, len(result)))
 
-					// 如果结果太大，截取前 2000 字符
+					// 如果结果太大，截取前 2000 字符，避免传输过大数据
 					if len(result) > 2000 {
-						logger.Info(fmt.Sprintf("工具结果过大（%d 字符），截取前 2000 字符", len(result)))
+						logger.Debug(fmt.Sprintf("工具结果过大（%d 字符），截取前 2000 字符", len(result)))
 						result = result[:2000] + "\n...(数据过大，已截取部分内容)"
 					}
 
 					toolResults = append(toolResults, fmt.Sprintf("工具 %s 执行结果:\n%s", toolName, result))
+					// 发送成功状态到前端
 					outputChan <- fmt.Sprintf("✅ 工具 %s 执行成功，正在处理结果...\n\n", toolName)
 				}
 			}
@@ -645,7 +676,7 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 
 请开始回答：`, toolContext)
 
-				logger.Info("将工具结果发送给 LLM 进行流式处理和理解")
+				logger.Debug("将工具结果发送给 LLM 进行流式处理和理解")
 
 				// 再次调用 LLM 流式处理工具结果
 				streamChan2, err := s.llm.StreamGenerate(ctx, processPrompt)
@@ -666,9 +697,8 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 		logger.Error(fmt.Sprintf("更新会话失败: %v", err))
 	}
 
-	logger.Info(fmt.Sprintf("流式对话开始 - 会话: %s, 用户消息: %s", sessionID, userMessage.ID))
+	logger.Debug(fmt.Sprintf("流式对话开始 - 会话: %s, 用户消息: %s", sessionID, userMessage.ID))
 
-	wg.Wait()
 	return outputChan, userMessage, ragReferences, nil
 }
 
@@ -724,14 +754,13 @@ func (s *ChatService) executeMCPTool(ctx context.Context, serverName, toolName s
 
 // SaveAIMessage 保存AI消息到数据库（流式完成后调用）
 func (s *ChatService) SaveAIMessage(sessionID, content string, ragReferences []map[string]interface{}) (*model.ChatMessage, error) {
-	// 将ragReferences转换为JSON字符串
 	ragRefsJSON := ""
 	if len(ragReferences) > 0 {
-		ragRefsBytes, err := json.Marshal(ragReferences)
+		refsBytes, err := json.Marshal(ragReferences)
 		if err != nil {
 			logger.Error(fmt.Sprintf("序列化RAG引用失败: %v", err))
 		} else {
-			ragRefsJSON = string(ragRefsBytes)
+			ragRefsJSON = string(refsBytes)
 		}
 	}
 
@@ -741,12 +770,52 @@ func (s *ChatService) SaveAIMessage(sessionID, content string, ragReferences []m
 		Content:       content,
 		RAGReferences: ragRefsJSON,
 	}
+
 	if err := s.repo.CreateMessage(aiMessage); err != nil {
 		logger.Error(fmt.Sprintf("保存AI消息失败: %v", err))
 		return nil, err
 	}
-	logger.Info(fmt.Sprintf("保存AI消息成功: %s, RAG引用数量: %d", aiMessage.ID, len(ragReferences)))
+
+	if s.tokenSvc != nil {
+		history, err := s.repo.GetRecentMessages(sessionID, 2)
+		if err == nil && len(history) >= 2 {
+			userMsg := history[len(history)-2]
+			inputTokens := len(userMsg.Content) / 4
+			outputTokens := len(content) / 4
+			totalTokens := inputTokens + outputTokens
+
+			session, err := s.repo.GetSessionByID(sessionID)
+			var agentID string
+			if err == nil && session != nil {
+				agentID = "default"
+			}
+
+			usage := TokenUsage{
+				SessionID:    sessionID,
+				AgentID:      agentID,
+				Model:        "qwen-turbo",
+				InputTokens:  inputTokens,
+				OutputTokens: outputTokens,
+				TotalTokens:  totalTokens,
+			}
+
+			if err := s.tokenSvc.RecordUsage(context.Background(), usage); err != nil {
+				logger.Error(fmt.Sprintf("记录Token使用失败: %v", err))
+			} else {
+				logger.Debug(fmt.Sprintf("记录Token使用成功: session=%s, input=%d, output=%d, total=%d",
+					sessionID, inputTokens, outputTokens, totalTokens))
+			}
+		}
+	}
+
+	logger.Debug(fmt.Sprintf("保存AI消息成功: %s", aiMessage.ID))
 	return aiMessage, nil
 }
 
-// formatToolResult 格式化工具返回结果为易读的 markdown 格式
+func formatToolResult(result string) string {
+	maxLen := 2000
+	if len(result) <= maxLen {
+		return result
+	}
+	return result[:maxLen] + "\n...(结果过长，已截取)"
+}

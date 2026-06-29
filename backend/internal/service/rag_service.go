@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,20 +16,22 @@ import (
 // KnowledgeDocument 知识库文档结构
 // 用于存储和管理运维知识库中的文档数据
 type KnowledgeDocument struct {
-	ID       string                 `json:"id"`       // 文档唯一标识符
-	Title    string                 `json:"title"`    // 文档标题
-	Content  string                 `json:"content"`  // 文档内容（支持Markdown格式）
-	Category string                 `json:"category"` // 文档分类（如：troubleshooting, optimization等）
-	Tags     []string               `json:"tags"`     // 文档标签（用于分类和检索）
-	Metadata map[string]interface{} `json:"metadata"` // 文档元数据（创建时间、作者等）
+	ID        string                 `json:"id"`        // 文档唯一标识符
+	Title     string                 `json:"title"`     // 文档标题
+	Content   string                 `json:"content"`   // 文档内容（支持Markdown格式）
+	DocType   string                 `json:"doc_type"`  // 文档类型：sop / faq / alert
+	Component string                 `json:"component"` // 组件名：mysql / k8s / redis
+	Tags      []string               `json:"tags"`      // 文档标签（用于分类和检索）
+	Metadata  map[string]interface{} `json:"metadata"`  // 文档元数据（创建时间、作者等）
 }
 
 // SearchResult 知识检索结果结构
 // 包含检索到的文档及其相关性评分
 type SearchResult struct {
-	Document KnowledgeDocument `json:"document"` // 检索到的文档内容
-	Score    float64           `json:"score"`    // 相关性评分（0-1，越高越相关）
-	Distance float64           `json:"distance"` // 向量距离（越低越相似）
+	Document       KnowledgeDocument `json:"document"`
+	Score          float64           `json:"score"`
+	Distance       float64           `json:"distance"`
+	RelevanceLevel string            `json:"relevance_level"`
 }
 
 // RAGService RAG（检索增强生成）服务
@@ -70,16 +73,13 @@ func NewRAGServiceWithMilvus(collection string, milvusSvc *MilvusService, embedd
 }
 
 func (r *RAGService) SearchKnowledge(ctx context.Context, query string, topK int) ([]SearchResult, error) {
-	logger.Info(fmt.Sprintf("Searching knowledge: query='%s', topK=%d", query, topK))
+	logger.Debug(fmt.Sprintf("Searching knowledge: query='%s', topK=%d", query, topK))
 
-	// 最小相关性评分阈值（提高到0.97，严格过滤边缘相关内容）
-	// 使用修正的评分公式后，阈值设置如下：
-	// score >= 0.97：相关性很高，distance约 <= 0.91（语义高度相似）
-	// score >= 0.95：相关性中等，distance约 <= 1.5（边缘相关，应被过滤）
-	// score >= 0.90：相关性较弱，distance约 <= 3
-	// 阈值0.97确保只返回语义真正高度相似的文档，过滤边缘相关和不相关内容
-	// 例如："rancher地址查询"应只返回rancher文档，不应返回harbor文档
-	minScoreThreshold := 0.97
+	const (
+		HighRelevanceThreshold   = 0.70
+		MediumRelevanceThreshold = 0.50
+		LowRelevanceThreshold    = 0.40
+	)
 
 	// 优先使用Milvus向量检索（推荐方式）
 	if r.MilvusService != nil && r.EmbeddingSvc != nil {
@@ -96,30 +96,57 @@ func (r *RAGService) SearchKnowledge(ctx context.Context, query string, topK int
 			return nil, err
 		}
 
-		// 过滤低相关性结果（score < 0.75）
-		// 使用改进的评分公式，阈值0.75能够较好地过滤不相关内容
-		// 确保只返回相关性较强的知识库文档
+		// 过滤低相关性结果，使用混合检索策略（Keyword + Vector）
+		// 混合检索是业界主流方案，结合关键词匹配和语义相似度的优势
+		// Keyword权重20%，Vector权重80%
 		filteredResults := []SearchResult{}
 		for _, result := range results {
-			// 详细日志：记录每条结果的评分和距离，帮助理解相关性
-			logger.Info(fmt.Sprintf("RAG search result: title='%s', score=%.4f, distance=%.4f, threshold=%.4f, included=%v",
-				result.Document.Title, result.Score, result.Distance, minScoreThreshold, result.Score >= minScoreThreshold))
+			// 计算关键词匹配分数
+			keywordScore := calculateKeywordScore(query, result.Document.Title, result.Document.Content)
 
-			if result.Score >= minScoreThreshold {
-				filteredResults = append(filteredResults, result)
+			// 混合评分：Vector * 0.8 + Keyword * 0.2
+			finalScore := result.Score*0.8 + keywordScore*0.2
+
+			var relevanceLevel string
+			var included bool
+
+			if finalScore >= HighRelevanceThreshold {
+				relevanceLevel = "high"
+				included = true
+			} else if finalScore >= MediumRelevanceThreshold {
+				relevanceLevel = "medium"
+				included = true
+			} else if finalScore >= LowRelevanceThreshold {
+				relevanceLevel = "low"
+				included = false
+				logger.Debug(fmt.Sprintf("Filtered low relevance document: title='%s', keyword=%.4f, vector=%.4f, final=%.4f",
+					result.Document.Title, keywordScore, result.Score, finalScore))
 			} else {
-				logger.Info(fmt.Sprintf("Filtered out low-relevance document: title='%s', score=%.4f < threshold=%.4f",
-					result.Document.Title, result.Score, minScoreThreshold))
+				relevanceLevel = "none"
+				included = false
+				logger.Debug(fmt.Sprintf("Filtered irrelevant document: title='%s', keyword=%.4f, vector=%.4f, final=%.4f",
+					result.Document.Title, keywordScore, result.Score, finalScore))
+			}
+
+			logger.Debug(fmt.Sprintf("RAG search result: title='%s', keyword=%.4f, vector=%.4f, final=%.4f, level=%s, included=%v",
+				result.Document.Title, keywordScore, result.Score, finalScore, relevanceLevel, included))
+
+			if included {
+				filteredResults = append(filteredResults, SearchResult{
+					Document:       result.Document,
+					Score:          finalScore,
+					Distance:       result.Distance,
+					RelevanceLevel: relevanceLevel,
+				})
 			}
 		}
 
-		// 如果所有结果都被过滤，返回空列表（不返回不相关的引用）
 		if len(filteredResults) == 0 {
-			logger.Info(fmt.Sprintf("No relevant knowledge found for query='%s' (all results filtered by threshold=%.4f)",
-				query, minScoreThreshold))
+			logger.Debug(fmt.Sprintf("No relevant knowledge found for query='%s' (threshold=%.4f)",
+				query, MediumRelevanceThreshold))
 		} else {
 			logger.Info(fmt.Sprintf("Found %d relevant results from Milvus (filtered from %d, threshold=%.4f)",
-				len(filteredResults), len(results), minScoreThreshold))
+				len(filteredResults), len(results), MediumRelevanceThreshold))
 		}
 		return filteredResults, nil
 	}
@@ -129,30 +156,47 @@ func (r *RAGService) SearchKnowledge(ctx context.Context, query string, topK int
 	results := []SearchResult{}
 	docs := r.searchInMemory(query, topK)
 
-	// 计算相关性评分并过滤
 	for _, doc := range docs {
 		score := r.calculateScore(query, doc.Content)
-		logger.Info(fmt.Sprintf("Memory search result: title=%s, score=%.4f, threshold=%.4f, included=%v",
-			doc.Title, score, minScoreThreshold, score >= minScoreThreshold))
+		var relevanceLevel string
+		var included bool
 
-		if score >= minScoreThreshold {
-			results = append(results, SearchResult{
-				Document: doc,
-				Score:    score,
-				Distance: 1 - score,
-			})
+		if score >= HighRelevanceThreshold {
+			relevanceLevel = "high"
+			included = true
+		} else if score >= MediumRelevanceThreshold {
+			relevanceLevel = "medium"
+			included = true
+		} else if score >= LowRelevanceThreshold {
+			relevanceLevel = "low"
+			included = false
+			logger.Debug(fmt.Sprintf("Filtered low relevance memory document: title=%s, score=%.4f",
+				doc.Title, score))
 		} else {
-			logger.Info(fmt.Sprintf("Filtered out low-relevance memory document: title=%s, score=%.4f < threshold=%.4f",
-				doc.Title, score, minScoreThreshold))
+			relevanceLevel = "none"
+			included = false
+			logger.Debug(fmt.Sprintf("Filtered irrelevant memory document: title=%s, score=%.4f",
+				doc.Title, score))
+		}
+
+		logger.Debug(fmt.Sprintf("Memory search result: title=%s, score=%.4f, level=%s, included=%v",
+			doc.Title, score, relevanceLevel, included))
+
+		if included {
+			results = append(results, SearchResult{
+				Document:       doc,
+				Score:          score,
+				Distance:       1 - score,
+				RelevanceLevel: relevanceLevel,
+			})
 		}
 	}
 
-	// 如果所有结果都被过滤，返回空列表
 	if len(results) == 0 {
-		logger.Info(fmt.Sprintf("No relevant knowledge found in memory for query='%s' (threshold=%.4f)",
-			query, minScoreThreshold))
+		logger.Debug(fmt.Sprintf("No relevant knowledge found in memory for query='%s' (threshold=%.4f)",
+			query, MediumRelevanceThreshold))
 	} else {
-		logger.Info(fmt.Sprintf("Found %d relevant results from memory (threshold=%.4f)", len(results), minScoreThreshold))
+		logger.Info(fmt.Sprintf("Found %d relevant results from memory (threshold=%.4f)", len(results), MediumRelevanceThreshold))
 	}
 	return results, nil
 }
@@ -185,39 +229,44 @@ func (r *RAGService) searchInMemory(query string, limit int) []KnowledgeDocument
 	// 注意：这些文档是硬编码的，用户添加的文档不会被检索
 	knowledgeBase := []KnowledgeDocument{
 		{
-			ID:       "kb-001",
-			Title:    "服务响应慢常见原因",
-			Content:  "# 服务响应慢常见原因\n\n## CPU相关问题\n- CPU使用率过高\n- CPU throttling\n- 进程死循环\n\n## 内存相关问题\n- 内存不足\n- 内存泄漏\n- 大对象未释放\n\n## 数据库问题\n- 慢查询\n- 索引缺失\n- 连接池配置不当\n\n## 解决方案\n1. 添加索引\n2. 优化SQL\n3. 使用缓存",
-			Category: "troubleshooting",
-			Tags:     []string{"性能", "响应慢", "故障排查"},
+			ID:        "kb-001",
+			Title:     "服务响应慢常见原因",
+			Content:   "# 服务响应慢常见原因\n\n## CPU相关问题\n- CPU使用率过高\n- CPU throttling\n- 进程死循环\n\n## 内存相关问题\n- 内存不足\n- 内存泄漏\n- 大对象未释放\n\n## 数据库问题\n- 慢查询\n- 索引缺失\n- 连接池配置不当\n\n## 解决方案\n1. 添加索引\n2. 优化SQL\n3. 使用缓存",
+			DocType:   "sop",
+			Component: "general",
+			Tags:      []string{"性能", "响应慢", "故障排查"},
 		},
 		{
-			ID:       "kb-002",
-			Title:    "CPU使用率高排查方法",
-			Content:  "# CPU使用率高排查\n\n## 排查步骤\n```bash\n# 1. 查看CPU使用情况\ntop -p <pid>\n\n# 2. 分析线程状态\nps -Lp <pid>\n\n# 3. 查看线程CPU占用\ntop -H -p <pid>\n```\n\n## 常见原因\n1. 死循环\n2. 频繁GC\n3. 算法复杂度高\n4. 锁竞争激烈",
-			Category: "troubleshooting",
-			Tags:     []string{"CPU", "性能排查"},
+			ID:        "kb-002",
+			Title:     "CPU使用率高排查方法",
+			Content:   "# CPU使用率高排查\n\n## 排查步骤\n```bash\n# 1. 查看CPU使用情况\ntop -p <pid>\n\n# 2. 分析线程状态\nps -Lp <pid>\n\n# 3. 查看线程CPU占用\ntop -H -p <pid>\n```\n\n## 常见原因\n1. 死循环\n2. 频繁GC\n3. 算法复杂度高\n4. 锁竞争激烈",
+			DocType:   "sop",
+			Component: "general",
+			Tags:      []string{"CPU", "性能排查"},
 		},
 		{
-			ID:       "kb-003",
-			Title:    "数据库慢查询优化",
-			Content:  "# 数据库慢查询优化\n\n## 优化方法\n\n### 1. 添加索引\n```sql\nCREATE INDEX idx_user_id ON users(user_id);\n```\n\n### 2. 优化SQL语句\n- 避免 SELECT *\n- 使用 JOIN 替代子查询\n- 合理使用 LIMIT\n\n### 3. 分库分表\n- 水平分表\n- 垂直分库\n\n### 4. 使用缓存\n- Redis缓存热点数据\n- 本地缓存配置信息",
-			Category: "optimization",
-			Tags:     []string{"数据库", "优化", "慢查询"},
+			ID:        "kb-003",
+			Title:     "数据库慢查询优化",
+			Content:   "# 数据库慢查询优化\n\n## 优化方法\n\n### 1. 添加索引\n```sql\nCREATE INDEX idx_user_id ON users(user_id);\n```\n\n### 2. 优化SQL语句\n- 避免 SELECT *\n- 使用 JOIN 替代子查询\n- 合理使用 LIMIT\n\n### 3. 分库分表\n- 水平分表\n- 垂直分库\n\n### 4. 使用缓存\n- Redis缓存热点数据\n- 本地缓存配置信息",
+			DocType:   "sop",
+			Component: "mysql",
+			Tags:      []string{"数据库", "优化", "慢查询"},
 		},
 		{
-			ID:       "kb-004",
-			Title:    "内存泄漏检测",
-			Content:  "# 内存泄漏检测\n\n## 检测方法\n\n### Go程序\n```bash\n# pprof分析\ngo tool pprof http://localhost:6060/debug/pprof/heap\n\n# 查看内存趋势\ncurl http://localhost:6060/debug/pprof/heap > heap.out\n```\n\n### Java程序\n```bash\n# jmap查看堆内存\njmap -histo <pid>\n\n# MAT分析堆转储\njmap -dump:format=b,file=heap.hprof <pid>\n```",
-			Category: "troubleshooting",
-			Tags:     []string{"内存", "泄漏", "排查"},
+			ID:        "kb-004",
+			Title:     "内存泄漏检测",
+			Content:   "# 内存泄漏检测\n\n## 检测方法\n\n### Go程序\n```bash\n# pprof分析\ngo tool pprof http://localhost:6060/debug/pprof/heap\n\n# 查看内存趋势\ncurl http://localhost:6060/debug/pprof/heap > heap.out\n```\n\n### Java程序\n```bash\n# jmap查看堆内存\njmap -histo <pid>\n\n# MAT分析堆转储\njmap -dump:format=b,file=heap.hprof <pid>\n```",
+			DocType:   "sop",
+			Component: "general",
+			Tags:      []string{"内存", "泄漏", "排查"},
 		},
 		{
-			ID:       "kb-005",
-			Title:    "Kubernetes资源限制配置",
-			Content:  "# Kubernetes资源限制配置\n\n## 资源配置示例\n```yaml\nresources:\n  requests:\n    cpu: \"100m\"\n    memory: \"128Mi\"\n  limits:\n    cpu: \"500m\"\n    memory: \"512Mi\"\n```\n\n## 最佳实践\n- requests应设置为正常负载下的需求\n- limits应设置为峰值负载下的上限\n- 避免limits远大于requests（避免资源浪费）",
-			Category: "kubernetes",
-			Tags:     []string{"K8s", "资源", "配置"},
+			ID:        "kb-005",
+			Title:     "Kubernetes资源限制配置",
+			Content:   "# Kubernetes资源限制配置\n\n## 资源配置示例\n```yaml\nresources:\n  requests:\n    cpu: \"100m\"\n    memory: \"128Mi\"\n  limits:\n    cpu: \"500m\"\n    memory: \"512Mi\"\n```\n\n## 最佳实践\n- requests应设置为正常负载下的需求\n- limits应设置为峰值负载下的上限\n- 避免limits远大于requests（避免资源浪费）",
+			DocType:   "sop",
+			Component: "k8s",
+			Tags:      []string{"K8s", "资源", "配置"},
 		},
 	}
 
@@ -267,7 +316,7 @@ func (r *RAGService) matchQuery(query string, doc KnowledgeDocument) bool {
 	}
 
 	// 精确匹配：查询词与分类完全匹配（相关性高）
-	if strings.ToLower(queryLower) == strings.ToLower(doc.Category) {
+	if strings.Contains(queryLower, strings.ToLower(doc.DocType)) || strings.Contains(queryLower, strings.ToLower(doc.Component)) {
 		return true
 	}
 
@@ -297,7 +346,7 @@ func (r *RAGService) matchQuery(query string, doc KnowledgeDocument) bool {
 					}
 				}
 				// 文档分类包含关键词
-				if strings.Contains(strings.ToLower(doc.Category), keyword) {
+				if strings.Contains(strings.ToLower(doc.DocType), keyword) || strings.Contains(strings.ToLower(doc.Component), keyword) {
 					docKeywordMatch++
 				}
 				// 文档内容包含关键词
@@ -383,7 +432,7 @@ func (r *RAGService) calculateScore(query, content string) float64 {
 //
 // 返回：错误信息（nil表示成功）
 func (r *RAGService) AddDocument(ctx context.Context, doc KnowledgeDocument) error {
-	logger.Info(fmt.Sprintf("Adding document: %s (%s)", doc.ID, doc.Title))
+	logger.Debug(fmt.Sprintf("Adding document: %s (%s)", doc.ID, doc.Title))
 
 	tagsJSON, _ := json.Marshal(doc.Tags)
 
@@ -399,7 +448,8 @@ func (r *RAGService) AddDocument(ctx context.Context, doc KnowledgeDocument) err
 		ID:        doc.ID,
 		Title:     doc.Title,
 		Content:   doc.Content,
-		Category:  doc.Category,
+		DocType:   doc.DocType,
+		Component: doc.Component,
 		Tags:      string(tagsJSON),
 		CreatedBy: createdBy,
 		UpdatedBy: createdBy,
@@ -412,7 +462,7 @@ func (r *RAGService) AddDocument(ctx context.Context, doc KnowledgeDocument) err
 			logger.Error(fmt.Sprintf("Failed to save document to PostgreSQL: %v", err))
 			return err
 		}
-		logger.Info(fmt.Sprintf("Document saved to PostgreSQL: %s", doc.ID))
+		logger.Debug(fmt.Sprintf("Document saved to PostgreSQL: %s", doc.ID))
 	}
 
 	if r.MilvusService != nil && r.EmbeddingSvc != nil {
@@ -427,7 +477,7 @@ func (r *RAGService) AddDocument(ctx context.Context, doc KnowledgeDocument) err
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Document added to Milvus: %s", doc.ID))
+		logger.Debug(fmt.Sprintf("Document added to Milvus: %s", doc.ID))
 	}
 
 	return nil
@@ -446,7 +496,7 @@ func (r *RAGService) AddDocument(ctx context.Context, doc KnowledgeDocument) err
 //
 // 返回：文档内容和错误信息
 func (r *RAGService) GetDocument(ctx context.Context, docID string) (*KnowledgeDocument, error) {
-	logger.Info(fmt.Sprintf("Getting document: %s", docID))
+	logger.Debug(fmt.Sprintf("Getting document: %s", docID))
 
 	// 优先从Milvus获取
 	if r.MilvusService != nil {
@@ -482,8 +532,8 @@ func (r *RAGService) GetDocument(ctx context.Context, docID string) (*KnowledgeD
 //	metadata - 元数据（包含更新时间等）
 //
 // 返回：更新后的文档和错误信息
-func (r *RAGService) UpdateDocument(ctx context.Context, docID string, title string, content string, category string, tags []string, metadata map[string]interface{}) (*KnowledgeDocument, error) {
-	logger.Info(fmt.Sprintf("Updating document: %s", docID))
+func (r *RAGService) UpdateDocument(ctx context.Context, docID string, title string, content string, docType string, component string, tags []string, metadata map[string]interface{}) (*KnowledgeDocument, error) {
+	logger.Debug(fmt.Sprintf("Updating document: %s", docID))
 
 	if metadata == nil {
 		metadata = map[string]interface{}{}
@@ -491,12 +541,13 @@ func (r *RAGService) UpdateDocument(ctx context.Context, docID string, title str
 	metadata["updated_at"] = time.Now().Format(time.RFC3339)
 
 	doc := &KnowledgeDocument{
-		ID:       docID,
-		Title:    title,
-		Content:  content,
-		Category: category,
-		Tags:     tags,
-		Metadata: metadata,
+		ID:        docID,
+		Title:     title,
+		Content:   content,
+		DocType:   docType,
+		Component: component,
+		Tags:      tags,
+		Metadata:  metadata,
 	}
 
 	tagsJSON, _ := json.Marshal(tags)
@@ -510,14 +561,15 @@ func (r *RAGService) UpdateDocument(ctx context.Context, docID string, title str
 		if err == nil {
 			pgDoc.Title = title
 			pgDoc.Content = content
-			pgDoc.Category = category
+			pgDoc.DocType = docType
+			pgDoc.Component = component
 			pgDoc.Tags = string(tagsJSON)
 			pgDoc.UpdatedBy = updatedBy
 			pgDoc.UpdatedAt = time.Now()
 			if err := r.DBRepo.Update(pgDoc); err != nil {
 				logger.Error(fmt.Sprintf("Failed to update document in PostgreSQL: %v", err))
 			} else {
-				logger.Info(fmt.Sprintf("Document updated in PostgreSQL: %s", docID))
+				logger.Debug(fmt.Sprintf("Document updated in PostgreSQL: %s", docID))
 			}
 		}
 	}
@@ -543,13 +595,13 @@ func (r *RAGService) UpdateDocument(ctx context.Context, docID string, title str
 }
 
 func (r *RAGService) DeleteDocument(ctx context.Context, docID string) error {
-	logger.Info(fmt.Sprintf("Deleting document: %s", docID))
+	logger.Debug(fmt.Sprintf("Deleting document: %s", docID))
 
 	if r.DBRepo != nil {
 		if err := r.DBRepo.Delete(docID); err != nil {
 			logger.Error(fmt.Sprintf("Failed to delete document from PostgreSQL: %v", err))
 		} else {
-			logger.Info(fmt.Sprintf("Document deleted from PostgreSQL: %s", docID))
+			logger.Debug(fmt.Sprintf("Document deleted from PostgreSQL: %s", docID))
 		}
 	}
 
@@ -560,11 +612,11 @@ func (r *RAGService) DeleteDocument(ctx context.Context, docID string) error {
 	return nil
 }
 
-func (r *RAGService) ListDocuments(ctx context.Context, category string, search string, page, pageSize int) ([]KnowledgeDocument, int64, error) {
-	logger.Info(fmt.Sprintf("Listing documents: category=%s, search=%s, page=%d, pageSize=%d", category, search, page, pageSize))
+func (r *RAGService) ListDocuments(ctx context.Context, docType string, component string, search string, page, pageSize int) ([]KnowledgeDocument, int64, error) {
+	logger.Debug(fmt.Sprintf("Listing documents: docType=%s, component=%s, search=%s, page=%d, pageSize=%d", docType, component, search, page, pageSize))
 
 	if r.DBRepo != nil {
-		pgDocs, total, err := r.DBRepo.List(category, search, page, pageSize)
+		pgDocs, total, err := r.DBRepo.List(docType, component, search, page, pageSize)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to list documents from PostgreSQL: %v", err))
 			return nil, 0, err
@@ -578,11 +630,12 @@ func (r *RAGService) ListDocuments(ctx context.Context, category string, search 
 			}
 
 			doc := KnowledgeDocument{
-				ID:       pgDoc.ID,
-				Title:    pgDoc.Title,
-				Content:  pgDoc.Content,
-				Category: pgDoc.Category,
-				Tags:     tags,
+				ID:        pgDoc.ID,
+				Title:     pgDoc.Title,
+				Content:   pgDoc.Content,
+				DocType:   pgDoc.DocType,
+				Component: pgDoc.Component,
+				Tags:      tags,
 				Metadata: map[string]interface{}{
 					"created_at": pgDoc.CreatedAt.Format(time.RFC3339),
 					"created_by": pgDoc.CreatedBy,
@@ -593,7 +646,7 @@ func (r *RAGService) ListDocuments(ctx context.Context, category string, search 
 			docs = append(docs, doc)
 		}
 
-		logger.Info(fmt.Sprintf("Listed %d documents from PostgreSQL (total: %d)", len(docs), total))
+		logger.Debug(fmt.Sprintf("Listed %d documents from PostgreSQL (total: %d)", len(docs), total))
 		return docs, total, nil
 	}
 
@@ -619,6 +672,77 @@ func (r *RAGService) GetContextForQuery(ctx context.Context, query string, maxTo
 		context += fmt.Sprintf("%d. %s\n   %s\n\n", i+1, result.Document.Title, result.Document.Content)
 	}
 
-	logger.Info(fmt.Sprintf("Generated context: %d chars", len(context)))
+	logger.Debug(fmt.Sprintf("Generated context: %d chars", len(context)))
 	return context, nil
+}
+
+// calculateKeywordScore 使用关键词匹配计算分数
+// 适用于中英文混合场景，无需第三方库
+func calculateKeywordScore(query, title, content string) float64 {
+	// 提取查询关键词（停用词过滤）
+	keywords := extractKeywords(query)
+
+	if len(keywords) == 0 {
+		return 0.0
+	}
+
+	// 合并标题和内容作为文档
+	document := strings.ToLower(title + " " + content)
+
+	// 计算关键词匹配比例
+	matchedCount := 0
+	for _, keyword := range keywords {
+		if strings.Contains(document, keyword) {
+			matchedCount++
+		}
+	}
+
+	matchRatio := float64(matchedCount) / float64(len(keywords))
+	return matchRatio // 0.0-1.0
+}
+
+// extractKeywords 提取关键词（停用词过滤）
+func extractKeywords(text string) []string {
+	textLower := strings.ToLower(text)
+
+	// 常见停用词（中英文）
+	stopWords := map[string]bool{
+		"怎么": true, "如何": true, "怎样": true, "为什么": true,
+		"什么": true, "哪": true, "哪里": true, "哪个": true,
+		"请": true, "帮": true, "帮忙": true, "能否": true,
+		"能够": true, "可以": true, "能": true, "用": true,
+		"让": true, "给": true, "的": true, "了": true,
+		"在": true, "是": true, "和": true, "与": true,
+		"或": true, "有": true, "这": true, "那": true,
+		"the": true, "a": true, "an": true, "is": true,
+		"are": true, "was": true, "how": true, "what": true,
+		"why": true, "where": true, "which": true, "can": true,
+		"could": true, "would": true, "please": true, "help": true,
+		"need": true, "want": true, "do": true, "did": true,
+		"in": true, "on": true, "at": true, "to": true, "of": true,
+		"for": true, "with": true, "by": true, "from": true,
+	}
+
+	keywords := []string{}
+
+	// 1. 提取英文单词和数字组合（如kubekey, k8s, wifi等）
+	englishPattern := regexp.MustCompile(`[a-zA-Z0-9][a-zA-Z0-9\-]+`)
+	englishMatches := englishPattern.FindAllString(textLower, -1)
+	for _, match := range englishMatches {
+		if !stopWords[match] {
+			keywords = append(keywords, match)
+		}
+	}
+
+	// 2. 提取中文字符串（>=2字的非停用词片段）
+	// 使用简单的策略：提取连续的中文字符
+	chinesePattern := regexp.MustCompile(`[\p{Han}]+`)
+	chineseMatches := chinesePattern.FindAllString(textLower, -1)
+	for _, match := range chineseMatches {
+		if len(match) >= 2 && !stopWords[match] {
+			keywords = append(keywords, match)
+		}
+	}
+
+	return keywords
 }

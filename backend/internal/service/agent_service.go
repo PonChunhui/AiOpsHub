@@ -146,32 +146,32 @@ func boolToString(b bool) string {
 func (s *AgentService) InitializePresets() error {
 	presetAgents := GetPresetAgents()
 
-	logger.Info(fmt.Sprintf("开始初始化 %d 个预设 Agent...", len(presetAgents)))
+	logger.Debug(fmt.Sprintf("开始初始化 %d 个预设 Agent...", len(presetAgents)))
 
 	for _, preset := range presetAgents {
 		// 检查是否已存在
 		_, err := s.repo.GetByID(preset.ID)
 		if err == nil {
 			// 已存在，跳过更新（保留用户的自定义配置）
-			logger.Info(fmt.Sprintf("⏭️  预设 Agent %s (%s) 已存在，跳过更新", preset.Name, preset.Avatar))
+			logger.Debug(fmt.Sprintf("⏭️  预设 Agent %s (%s) 已存在，跳过更新", preset.Name, preset.Avatar))
 		} else {
 			// 不存在，创建
 			if err := s.repo.Create(&preset); err != nil {
 				logger.Error(fmt.Sprintf("创建预设 Agent %s 失败: %v", preset.Name, err))
 			} else {
-				logger.Info(fmt.Sprintf("✅ 创建预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
+				logger.Debug(fmt.Sprintf("✅ 创建预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
 			}
 		}
 	}
 
-	logger.Info("🎉 预设 Agent 初始化完成")
+	logger.Debug("🎉 预设 Agent 初始化完成")
 	return nil
 }
 
 // ForceResetPresets 强制重置所有预设 Agent 到默认配置
 // 用于系统维护或恢复默认设置
 func (s *AgentService) ForceResetPresets() error {
-	logger.Info("⚠️  开始强制重置预设 Agent...")
+	logger.Debug("⚠️  开始强制重置预设 Agent...")
 
 	presetAgents := GetPresetAgents()
 
@@ -186,18 +186,18 @@ func (s *AgentService) ForceResetPresets() error {
 			if err := s.repo.Update(&preset); err != nil {
 				logger.Error(fmt.Sprintf("重置预设 Agent %s 失败: %v", preset.Name, err))
 			} else {
-				logger.Info(fmt.Sprintf("🔄 重置预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
+				logger.Debug(fmt.Sprintf("🔄 重置预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
 			}
 		} else {
 			// 不存在，创建
 			if err := s.repo.Create(&preset); err != nil {
 				logger.Error(fmt.Sprintf("创建预设 Agent %s 失败: %v", preset.Name, err))
 			} else {
-				logger.Info(fmt.Sprintf("✅ 创建预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
+				logger.Debug(fmt.Sprintf("✅ 创建预设 Agent %s (%s) 成功", preset.Name, preset.Avatar))
 			}
 		}
 	}
 
-	logger.Info("🎉 预设 Agent 强制重置完成")
+	logger.Debug("🎉 预设 Agent 强制重置完成")
 	return nil
 }

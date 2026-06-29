@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -13,6 +14,22 @@ var (
 	Logger *zap.Logger
 	Sugar  *zap.SugaredLogger
 )
+
+func getLogLevel() zapcore.Level {
+	levelStr := viper.GetString("log.level")
+	switch levelStr {
+	case "debug":
+		return zapcore.DebugLevel
+	case "info":
+		return zapcore.InfoLevel
+	case "warn":
+		return zapcore.WarnLevel
+	case "error":
+		return zapcore.ErrorLevel
+	default:
+		return zapcore.InfoLevel
+	}
+}
 
 func Init() {
 	var err error
@@ -36,7 +53,7 @@ func Init() {
 	core := zapcore.NewCore(
 		encoder,
 		zapcore.AddSync(os.Stdout),
-		zapcore.DebugLevel,
+		getLogLevel(),
 	)
 
 	Logger = zap.New(core, zap.AddCaller())

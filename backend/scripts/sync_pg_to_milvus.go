@@ -9,6 +9,7 @@ import (
 	"github.com/aiops/AiOpsHub/backend/internal/database"
 	"github.com/aiops/AiOpsHub/backend/internal/model"
 	"github.com/aiops/AiOpsHub/backend/internal/service"
+	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	"github.com/spf13/viper"
 )
 
@@ -16,6 +17,8 @@ func main() {
 	if err := config.Init(); err != nil {
 		log.Fatalf("Failed to init config: %v", err)
 	}
+
+	logger.Init()
 
 	if err := database.Init(); err != nil {
 		log.Fatalf("Failed to init database: %v", err)
@@ -78,11 +81,12 @@ func main() {
 			}
 
 			knowledgeDoc := service.KnowledgeDocument{
-				ID:       doc.ID,
-				Title:    doc.Title,
-				Content:  doc.Content,
-				Category: doc.Category,
-				Tags:     []string{},
+				ID:        doc.ID,
+				Title:     doc.Title,
+				Content:   doc.Content,
+				DocType:   doc.DocType,
+				Component: doc.Component,
+				Tags:      []string{},
 				Metadata: map[string]interface{}{
 					"created_at": doc.CreatedAt.Format(time.RFC3339),
 					"updated_at": doc.UpdatedAt.Format(time.RFC3339),

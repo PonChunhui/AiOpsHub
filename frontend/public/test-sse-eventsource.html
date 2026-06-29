@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE 测试 - 使用 EventSource</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #66b1ff;
+        }
+        button:disabled {
+            background: #c0c4cc;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #f0f9ff;
+            color: #409eff;
+        }
+        .status.error {
+            background: #fef0f0;
+            color: #f56c6c;
+        }
+        .content-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSE 测试 - EventSource 方式</h1>
+        <p style="color: #666; font-size: 14px;">注意：EventSource API 只支持 GET 请求，不支持 POST。因此本测试先创建会话，然后用 GET 请求测试 SSE。</p>
+        
+        <div class="input-group">
+            <label>Token:</label>
+            <input type="text" id="token" placeholder="Bearer token" />
+        </div>
+        
+        <div class="input-group">
+            <label>会话ID:</label>
+            <input type="text" id="sessionId" placeholder="点击按钮自动创建" readonly />
+        </div>
+        
+        <div class="input-group">
+            <label>消息内容:</label>
+            <textarea id="message" rows="3" placeholder="输入消息...">你好</textarea>
+        </div>
+        
+        <button id="createSessionBtn" onclick="createSessionAndSend()">创建会话并发送消息</button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="output" id="output"></div>
+        
+        <div class="content-display" id="contentDisplay">
+            <h3>AI 回复内容：</h3>
+            <div id="aiContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const tokenInput = document.getElementById('token');
+        const sessionIdInput = document.getElementById('sessionId');
+        const messageInput = document.getElementById('message');
+        const createSessionBtn = document.getElementById('createSessionBtn');
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+        const aiContentDiv = document.getElementById('aiContent');
+        
+        // 从 localStorage 加载 token
+        const savedToken = localStorage.getItem('token');
+        if (savedToken) {
+            tokenInput.value = savedToken;
+        }
+        
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isError ? 'error' : 'success');
+            statusDiv.style.display = 'block';
+        }
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            outputDiv.textContent += `[${timestamp}] ${message}\n`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        function clearOutput() {
+            outputDiv.textContent = '';
+            aiContentDiv.textContent = '';
+        }
+        
+        async function createSession(token) {
+            log('创建新会话...');
+            const response = await fetch('/api/v1/chat/sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title: '测试会话' })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`创建会话失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const sessionId = data.data.id;
+            log(`会话创建成功: ${sessionId}`);
+            sessionIdInput.value = sessionId;
+            return sessionId;
+        }
+        
+        async function createSessionAndSend() {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                showStatus('请输入 Token', true);
+                return;
+            }
+            
+            // 保存 token 到 localStorage
+            localStorage.setItem('token', token);
+            
+            const message = messageInput.value.trim();
+            if (!message) {
+                showStatus('请输入消息', true);
+                return;
+            }
+            
+            clearOutput();
+            createSessionBtn.disabled = true;
+            showStatus('正在处理...');
+            
+            try {
+                // 创建会话
+                const sessionId = await createSession(token);
+                
+                // 先用 POST 发送消息并保存（非流式）
+                log('发送消息到后端...');
+                const sendResponse = await fetch('/api/v1/chat/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        content: message
+                    })
+                });
+                
+                if (!sendResponse.ok) {
+                    const errorText = await sendResponse.text();
+                    throw new Error(`发送消息失败: ${sendResponse.status} ${errorText}`);
+                }
+                
+                const sendData = await sendResponse.json();
+                log('消息发送成功，AI 已回复');
+                log(`AI 回复 ID: ${sendData.ai_message.id}`);
+                log(`AI 回复内容: ${sendData.ai_response}`);
+                
+                aiContentDiv.textContent = sendData.ai_response;
+                
+                showStatus('测试成功（非流式）！', false);
+                
+                log('');
+                log('说明：由于 EventSource API 只支持 GET 请求，');
+                log('本测试使用 POST /api/v1/chat/messages（非流式）验证功能。');
+                log('如果需要真正的流式输出，请使用 fetch + ReadableStream 方式。');
+                
+            } catch (error) {
+                log(`错误: ${error.message}`);
+                console.error('Detailed error:', error);
+                showStatus(`错误: ${error.message}`, true);
+            } finally {
+                createSessionBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

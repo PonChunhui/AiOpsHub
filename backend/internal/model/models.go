@@ -39,7 +39,8 @@ type RAGDocument struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
 	Title     string    `json:"title" gorm:"not null"`
 	Content   string    `json:"content" gorm:"type:text"`
-	Category  string    `json:"category" gorm:"type:varchar(100)"`
+	DocType   string    `json:"doc_type" gorm:"type:varchar(50)"`  // 文档类型：sop / faq / alert
+	Component string    `json:"component" gorm:"type:varchar(50)"` // 组件名：mysql / k8s / redis
 	Tags      string    `json:"tags" gorm:"type:varchar(500)"`
 	CreatedBy string    `json:"created_by" gorm:"type:varchar(100)"`
 	UpdatedBy string    `json:"updated_by" gorm:"type:varchar(100)"`
@@ -94,4 +95,16 @@ type MCPServer struct {
 	UpdatedBy   string    `json:"updated_by" gorm:"type:varchar(100)"`
 	CreatedAt   time.Time `json:"created_at" gorm:"index"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"index"`
+}
+
+type TokenUsageRecord struct {
+	ID           string    `json:"id" gorm:"primaryKey"`
+	SessionID    string    `json:"session_id" gorm:"type:varchar(36);index"`
+	AgentID      string    `json:"agent_id" gorm:"type:varchar(36);index"`
+	Model        string    `json:"model" gorm:"type:varchar(50)"`
+	InputTokens  int       `json:"input_tokens"`
+	OutputTokens int       `json:"output_tokens"`
+	TotalTokens  int       `json:"total_tokens"`
+	Cost         float64   `json:"cost"`
+	CreatedAt    time.Time `json:"created_at" gorm:"index"`
 }

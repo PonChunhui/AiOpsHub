@@ -49,7 +49,7 @@ func NewPrometheusTool(url string) Tool {
 }
 
 func (t *PrometheusTool) Call(ctx context.Context, input string) (string, error) {
-	logger.Info(fmt.Sprintf("PrometheusTool called with input: %s", input))
+	logger.Debug(fmt.Sprintf("PrometheusTool called with input: %s", input))
 
 	var params PrometheusQueryInput
 	err := json.Unmarshal([]byte(input), &params)
@@ -68,7 +68,7 @@ func (t *PrometheusTool) Call(ctx context.Context, input string) (string, error)
 		return "", err
 	}
 
-	logger.Info(fmt.Sprintf("PrometheusTool query successful"))
+	logger.Debug(fmt.Sprintf("PrometheusTool query successful"))
 	return result, nil
 }
 
@@ -91,7 +91,7 @@ func (t *PrometheusTool) queryPrometheus(ctx context.Context, params PrometheusQ
 
 	fullURL := fmt.Sprintf("%s?%s", queryURL, urlParams.Encode())
 
-	logger.Info(fmt.Sprintf("Querying Prometheus: %s", fullURL))
+	logger.Debug(fmt.Sprintf("Querying Prometheus: %s", fullURL))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
@@ -223,7 +223,7 @@ func NewKubernetesTool() Tool {
 }
 
 func (t *KubernetesTool) Call(ctx context.Context, input string) (string, error) {
-	logger.Info(fmt.Sprintf("KubernetesTool called with input: %s", input))
+	logger.Debug(fmt.Sprintf("KubernetesTool called with input: %s", input))
 
 	var params KubernetesQueryInput
 	err := json.Unmarshal([]byte(input), &params)
@@ -241,7 +241,7 @@ func (t *KubernetesTool) Call(ctx context.Context, input string) (string, error)
 
 	result := t.mockKubernetesQuery(params)
 
-	logger.Info(fmt.Sprintf("KubernetesTool query successful"))
+	logger.Debug(fmt.Sprintf("KubernetesTool query successful"))
 	return result, nil
 }
 
@@ -296,7 +296,7 @@ func NewLogQueryTool() Tool {
 }
 
 func (t *LogQueryTool) Call(ctx context.Context, input string) (string, error) {
-	logger.Info(fmt.Sprintf("LogQueryTool called with input: %s", input))
+	logger.Debug(fmt.Sprintf("LogQueryTool called with input: %s", input))
 
 	var params LogQueryInput
 	err := json.Unmarshal([]byte(input), &params)
@@ -310,7 +310,7 @@ func (t *LogQueryTool) Call(ctx context.Context, input string) (string, error) {
 
 	result := t.mockLogQuery(params)
 
-	logger.Info(fmt.Sprintf("LogQueryTool query successful"))
+	logger.Debug(fmt.Sprintf("LogQueryTool query successful"))
 	return result, nil
 }
 

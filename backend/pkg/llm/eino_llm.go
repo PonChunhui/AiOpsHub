@@ -6,6 +6,7 @@ import (
 
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/callbacks"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 )
@@ -78,7 +79,7 @@ func createOpenAIChatModel(config EinoLLMConfig) (model.ChatModel, error) {
 func createAliyunBailianChatModel(config EinoLLMConfig) (model.ChatModel, error) {
 	modelName := config.Model
 	if modelName == "" {
-		modelName = "qwen-turbo"
+		modelName = "qwen3.7-max"
 	}
 
 	if config.APIKey == "" {
@@ -121,6 +122,31 @@ func (e *EinoLLM) Generate(ctx context.Context, prompt string) (string, error) {
 	logger.Info(fmt.Sprintf("EinoLLM generated response length: %d", len(response)))
 
 	return response, nil
+}
+
+func (e *EinoLLM) GenerateWithCallback(ctx context.Context, prompt string, handler callbacks.Handler) (string, *schema.Message, error) {
+	logger.Info(fmt.Sprintf("EinoLLM generating with callback for prompt: %s", prompt[:min(50, len(prompt))]))
+
+	ctx = callbacks.InitCallbacks(ctx, &callbacks.RunInfo{
+		Name:      "EinoLLM",
+		Type:      e.config.Provider,
+		Component: "ChatModel",
+	}, handler)
+
+	messages := []*schema.Message{
+		schema.UserMessage(prompt),
+	}
+
+	result, err := e.chatModel.Generate(ctx, messages)
+	if err != nil {
+		logger.Error(fmt.Sprintf("EinoLLM generation with callback failed: %v", err))
+		return "", nil, err
+	}
+
+	response := result.Content
+	logger.Info(fmt.Sprintf("EinoLLM generated response with callback, length: %d", len(response)))
+
+	return response, result, nil
 }
 
 func (e *EinoLLM) GenerateWithSystemPrompt(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
@@ -167,6 +193,7 @@ func (e *EinoLLM) StreamGenerate(ctx context.Context, prompt string) (<-chan str
 					return
 				}
 				logger.Error(fmt.Sprintf("Stream receive error: %v", err))
+				outputChan <- fmt.Sprintf("错误: %v", err)
 				return
 			}
 			if chunk.Content != "" {
@@ -176,6 +203,54 @@ func (e *EinoLLM) StreamGenerate(ctx context.Context, prompt string) (<-chan str
 	}()
 
 	return outputChan, nil
+}
+
+func (e *EinoLLM) StreamGenerateWithCallback(ctx context.Context, prompt string, handler callbacks.Handler) (<-chan string, *schema.Message, error) {
+	logger.Info(fmt.Sprintf("EinoLLM streaming with callback for prompt: %s", prompt[:min(50, len(prompt))]))
+
+	ctx = callbacks.InitCallbacks(ctx, &callbacks.RunInfo{
+		Name:      "EinoLLM",
+		Type:      e.config.Provider,
+		Component: "ChatModel",
+	}, handler)
+
+	messages := []*schema.Message{
+		schema.UserMessage(prompt),
+	}
+
+	streamReader, err := e.chatModel.Stream(ctx, messages)
+	if err != nil {
+		logger.Error(fmt.Sprintf("EinoLLM streaming with callback failed: %v", err))
+		return nil, nil, err
+	}
+
+	outputChan := make(chan string, 100)
+	var finalMsg *schema.Message
+
+	go func() {
+		defer close(outputChan)
+		defer streamReader.Close()
+
+		for {
+			chunk, err := streamReader.Recv()
+			if err != nil {
+				if err.Error() == "EOF" {
+					logger.Info("Stream with callback completed")
+					return
+				}
+				logger.Error(fmt.Sprintf("Stream receive error: %v", err))
+				return
+			}
+			if chunk.Content != "" {
+				outputChan <- chunk.Content
+			}
+			if chunk.ResponseMeta != nil {
+				finalMsg = chunk
+			}
+		}
+	}()
+
+	return outputChan, finalMsg, nil
 }
 
 func (e *EinoLLM) GetChatModel() model.ChatModel {
