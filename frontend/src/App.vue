@@ -33,6 +33,11 @@
           <span>MCP管理</span>
         </el-menu-item>
         
+        <el-menu-item index="/tools-manage" class="sidebar-menu-item">
+          <el-icon><Setting /></el-icon>
+          <span>工具管理</span>
+        </el-menu-item>
+        
         <el-menu-item index="/knowledge-base" class="sidebar-menu-item">
           <el-icon><FolderOpened /></el-icon>
           <span>知识库</span>
@@ -87,6 +92,7 @@ import {
   User,
   FolderOpened,
   Tools,
+  Setting,
   Cloudy,
   SwitchButton,
   ChatDotRound

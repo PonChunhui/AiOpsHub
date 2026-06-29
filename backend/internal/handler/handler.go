@@ -668,15 +668,19 @@ func DeleteAlertRule(c *gin.Context) {
 // ==================== Tool Handlers ====================
 
 func ListTools(c *gin.Context) {
-	SuccessResponse(c, []interface{}{})
+	handler := NewToolHandler(toolService)
+	handler.List(c)
 }
 
 func GetTool(c *gin.Context) {
-	SuccessResponse(c, gin.H{"message": "tool details"})
+	handler := NewToolHandler(toolService)
+	handler.GetByID(c)
 }
 
 func ExecuteTool(c *gin.Context) {
-	SuccessResponse(c, gin.H{"message": "tool executed"})
+	c.JSON(200, gin.H{
+		"message": "Tool execution not implemented yet",
+	})
 }
 
 // ==================== Stats Handler ====================

@@ -64,6 +64,8 @@ func autoMigrate() error {
 		&model.Datasource{},
 		&model.User{},
 		&model.Tool{},
+		&model.AgentTool{},   // 新增：Agent-Tool关联表
+		&model.SSHAuditLog{}, // 新增：SSH审计日志表
 		&model.ChatSession{},
 		&model.ChatMessage{},
 		&model.RAGDocument{},

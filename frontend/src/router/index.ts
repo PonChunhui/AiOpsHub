@@ -76,6 +76,12 @@ const router = createRouter({
       name: 'mcp-manage',
       component: () => import('@/views/MCPManage.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/tools-manage',
+      name: 'tools-manage',
+      component: () => import('@/views/ToolManage.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

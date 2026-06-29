@@ -8,6 +8,7 @@ import (
 	"github.com/cloudwego/eino-ext/components/model/openai"
 	"github.com/cloudwego/eino/callbacks"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -262,4 +263,95 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// GenerateWithTools 支持工具绑定的生成方法（Eino标准）
+func (e *EinoLLM) GenerateWithTools(ctx context.Context, prompt string, tools []tool.BaseTool) (string, *schema.Message, error) {
+	logger.Info(fmt.Sprintf("EinoLLM generating with %d tools", len(tools)))
+
+	// 将BaseTool转换为ToolInfo
+	toolInfos := make([]*schema.ToolInfo, len(tools))
+	for i, t := range tools {
+		info, err := t.Info(ctx)
+		if err != nil {
+			logger.Error(fmt.Sprintf("获取工具信息失败: %v", err))
+			return "", nil, err
+		}
+		toolInfos[i] = info
+	}
+
+	messages := []*schema.Message{
+		schema.UserMessage(prompt),
+	}
+
+	// 使用Eino的标准工具绑定方式
+	opts := []model.Option{
+		model.WithTools(toolInfos),
+		model.WithToolChoice(schema.ToolChoiceAllowed),
+	}
+
+	result, err := e.chatModel.Generate(ctx, messages, opts...)
+	if err != nil {
+		logger.Error(fmt.Sprintf("EinoLLM generation with tools failed: %v", err))
+		return "", nil, err
+	}
+
+	response := result.Content
+	logger.Info(fmt.Sprintf("EinoLLM generated response with tools, length: %d", len(response)))
+
+	// 检查是否有工具调用
+	if len(result.ToolCalls) > 0 {
+		logger.Info(fmt.Sprintf("LLM请求调用 %d 个工具", len(result.ToolCalls)))
+		for _, tc := range result.ToolCalls {
+			logger.Info(fmt.Sprintf("工具调用: %s, 参数: %s", tc.Function.Name, tc.Function.Arguments))
+		}
+	}
+
+	return response, result, nil
+}
+
+// GenerateWithToolsAndCallback 支持工具绑定和回调的生成方法
+func (e *EinoLLM) GenerateWithToolsAndCallback(ctx context.Context, prompt string, tools []tool.BaseTool, handler callbacks.Handler) (string, *schema.Message, error) {
+	logger.Info(fmt.Sprintf("EinoLLM generating with %d tools and callback", len(tools)))
+
+	// 将BaseTool转换为ToolInfo
+	toolInfos := make([]*schema.ToolInfo, len(tools))
+	for i, t := range tools {
+		info, err := t.Info(ctx)
+		if err != nil {
+			logger.Error(fmt.Sprintf("获取工具信息失败: %v", err))
+			return "", nil, err
+		}
+		toolInfos[i] = info
+	}
+
+	ctx = callbacks.InitCallbacks(ctx, &callbacks.RunInfo{
+		Name:      "EinoLLM",
+		Type:      e.config.Provider,
+		Component: "ChatModel",
+	}, handler)
+
+	messages := []*schema.Message{
+		schema.UserMessage(prompt),
+	}
+
+	opts := []model.Option{
+		model.WithTools(toolInfos),
+		model.WithToolChoice(schema.ToolChoiceAllowed),
+	}
+
+	result, err := e.chatModel.Generate(ctx, messages, opts...)
+	if err != nil {
+		logger.Error(fmt.Sprintf("EinoLLM generation with tools and callback failed: %v", err))
+		return "", nil, err
+	}
+
+	response := result.Content
+	logger.Info(fmt.Sprintf("EinoLLM generated response, length: %d", len(response)))
+
+	if len(result.ToolCalls) > 0 {
+		logger.Info(fmt.Sprintf("LLM请求调用 %d 个工具", len(result.ToolCalls)))
+	}
+
+	return response, result, nil
 }

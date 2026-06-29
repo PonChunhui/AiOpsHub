@@ -166,7 +166,21 @@ func registerRoutes(r *gin.Engine) {
 		{
 			tools.GET("", handler.ListTools)
 			tools.GET("/:id", handler.GetTool)
+			tools.POST("", handler.CreateTool)
+			tools.PUT("/:id", handler.UpdateTool)
+			tools.DELETE("/:id", handler.DeleteTool)
 			tools.POST("/:id/execute", handler.ExecuteTool)
+			tools.POST("/init-presets", handler.InitPresets)
+		}
+
+		agentTools := v1.Group("/agents/:id/tools")
+		agentTools.Use(middleware.Auth())
+		{
+			agentTools.GET("", handler.GetAgentTools)
+			agentTools.POST("/:tool_id", handler.BindToolToAgent)
+			agentTools.DELETE("/:tool_id", handler.UnbindToolFromAgent)
+			agentTools.PUT("/:tool_id/config", handler.UpdateAgentToolConfig)
+			agentTools.POST("/:tool_id/toggle", handler.ToggleAgentToolEnabled)
 		}
 
 		rag := v1.Group("/rag")

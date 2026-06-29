@@ -21,12 +21,14 @@ var (
 	milvusService    *service.MilvusService
 	embeddingService *service.EmbeddingService
 	agentService     *service.AgentService
+	toolService      *service.ToolService
 )
 
 func InitServices() {
 	initRAGService()
 	initMCPService()
 	initTokenService()
+	initToolService()
 
 	agentService = service.NewAgentService()
 	if err := agentService.InitializePresets(); err != nil {
@@ -38,6 +40,12 @@ func initTokenService() {
 	tokenRepo := repository.NewTokenRepository(database.DB)
 	tokenService = service.NewTokenServiceWithRepo(tokenRepo)
 	fmt.Println("Token Service initialized with database persistence")
+}
+
+func initToolService() {
+	toolRepo := repository.NewToolRepository()
+	toolService = service.NewToolService(toolRepo)
+	fmt.Println("Tool Service initialized")
 }
 
 func initMCPService() {
