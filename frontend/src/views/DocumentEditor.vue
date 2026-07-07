@@ -110,7 +110,7 @@ import { ragApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, View, Check } from '@element-plus/icons-vue'
 import { marked } from 'marked'
-import MarkdownEditor from '@/components/MarkdownEditor.vue'
+import MarkdownEditor from '@/components/editor/MarkdownEditor.vue'
 
 const router = useRouter()
 const route = useRoute()

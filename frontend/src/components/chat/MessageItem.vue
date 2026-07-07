@@ -8,23 +8,34 @@
     <div v-if="round.aiMessage" class="assistant-message">
       <div class="ai-avatar">AI</div>
       <div class="message-content-wrapper">
-        <div v-if="isLoading && !round.aiMessage.content" class="ai-content loading-message">
+        <div v-if="isLoading && !round.aiMessage.content && (!round.aiMessage.events || round.aiMessage.events.length === 0)" class="ai-content loading-message">
           <el-icon class="is-loading"><Loading /></el-icon>
           <span>AI正在思考...</span>
         </div>
         
         <div v-else class="ai-content-wrapper">
+          <GenuiRenderer 
+            v-if="round.aiMessage.events && round.aiMessage.events.length > 0"
+            :content="convertEventsToSchemaJson(round.aiMessage.events)"
+            :components="customComponents"
+          />
+          
           <ToolCallDisplay 
             v-if="parseToolCalls(round.aiMessage.content).length > 0"
             :tool-calls="parseToolCalls(round.aiMessage.content)"
           />
           
           <ToolResultDisplay 
-            v-if="getToolResult(round.aiMessage.content)"
-            :result="getToolResult(round.aiMessage.content)"
+            v-if="getToolResult(round.aiMessage.content || '')"
+            :result="getToolResult(round.aiMessage.content || '') || ''"
           />
           
           <div class="ai-content markdown-body" v-html="renderMarkdown(cleanContent(round.aiMessage.content))"></div>
+          
+          <AgentPathVisual 
+            v-if="round.aiMessage.agentPath && round.aiMessage.agentPath.length > 0 && !isLoading"
+            :agent-path="round.aiMessage.agentPath"
+          />
         </div>
         
         <RagReferences 
@@ -41,9 +52,13 @@
 import { computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { marked } from 'marked'
+import { GenuiRenderer } from '@opentiny/genui-sdk-vue'
+import { convertEventsToSchemaJson } from '@/adapters/agentEventToSchemaJson'
+import { customComponents } from '@/genui/customComponents'
 import ToolCallDisplay from './ToolCallDisplay.vue'
 import ToolResultDisplay from './ToolResultDisplay.vue'
 import RagReferences from './RagReferences.vue'
+import AgentPathVisual from '@/components/genui/AgentPathVisual.vue'
 
 interface Props {
   round: any
@@ -57,7 +72,7 @@ const emit = defineEmits<{
   showRagDetail: [ref: any]
 }>()
 
-const parseToolCalls = (content: string) => {
+const parseToolCalls = (content: string): any[] => {
   if (!content) return []
   
   const calls: any[] = []
@@ -66,7 +81,8 @@ const parseToolCalls = (content: string) => {
   
   while ((match = regex.exec(content)) !== null) {
     try {
-      const call = JSON.parse(match[1])
+      const callContent = match[1] || ''
+      const call = JSON.parse(callContent)
       calls.push(call)
     } catch (e) {
       console.error('Failed to parse tool call:', e)
@@ -76,16 +92,16 @@ const parseToolCalls = (content: string) => {
   return calls
 }
 
-const getToolResult = (content: string) => {
+const getToolResult = (content: string): string | null => {
   if (!content) return null
   
   const regex = /```tool_result\n([\s\S]*?)\n```/g
   const match = regex.exec(content)
   
-  return match ? match[1] : null
+  return match && match[1] ? match[1] : null
 }
 
-const cleanContent = (content: string) => {
+const cleanContent = (content: string): string => {
   if (!content) return ''
   
   const cleaned = content

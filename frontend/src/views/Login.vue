@@ -109,7 +109,12 @@ const handleLogin = async () => {
     ElMessage.success('登录成功')
     router.push('/')
   } catch (error: any) {
-    ElMessage.error(error.message || '登录失败')
+    const message = error.response?.data?.message || error.message || '登录失败'
+    if (!message.includes('401')) {
+      ElMessage.error(message)
+    } else {
+      ElMessage.error('用户名或密码错误')
+    }
   } finally {
     loading.value = false
   }

@@ -19,6 +19,7 @@ type Agent struct {
 	Temperature  float64   `json:"temperature" gorm:"type:decimal(3,2)"`          // 温度参数
 	IsPreset     bool      `json:"is_preset" gorm:"default:false"`                // 是否预设
 	Enabled      bool      `json:"enabled" gorm:"default:true"`                   // 是否启用
+	MCPServerIDs string    `json:"mcp_server_ids" gorm:"type:text"`               // MCP Server ID列表(JSON数组格式)
 	CreatedAt    time.Time `json:"created_at" gorm:"index"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"index"`
 }

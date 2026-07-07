@@ -389,6 +389,69 @@
             </el-scrollbar>
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="MCP Servers" name="mcp">
+          <el-alert type="info" :closable="false" style="margin-bottom: 16px;">
+            <template #title>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <el-icon><Connection /></el-icon>
+                <span>MCP Server 配置</span>
+              </div>
+            </template>
+            <template #default>
+              <div style="line-height: 1.6;">
+                选择要绑定到该 Agent 的 MCP Server，AI助手将自动加载这些 Server 提供的工具。
+                <strong>已选择 {{ form.mcp_server_ids.length }} 个 MCP Server</strong>
+              </div>
+            </template>
+          </el-alert>
+
+          <div v-if="mcpServers.length === 0" style="text-align: center; padding: 40px;">
+            <el-empty description="暂无可用的 MCP Server">
+              <el-button type="primary" @click="$router.push('/mcp-manage')">前往添加 MCP Server</el-button>
+            </el-empty>
+          </div>
+
+          <div v-else>
+            <el-scrollbar max-height="450px">
+              <div 
+                v-for="server in mcpServers" 
+                :key="server.id"
+                style="margin-bottom: 12px;"
+              >
+                <el-card 
+                  :body-style="{ padding: '16px' }"
+                  :class="form.mcp_server_ids.includes(server.id) ? 'tool-card-selected' : 'tool-card'"
+                  shadow="hover"
+                >
+                  <div style="display: flex; align-items: start; gap: 12px;">
+                    <el-checkbox 
+                      :model-value="form.mcp_server_ids.includes(server.id)"
+                      @change="handleMCPServerSelect(server.id)"
+                      size="large"
+                    />
+
+                    <div style="flex: 1;">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <strong style="font-size: 16px;">{{ server.name }}</strong>
+                        <el-tag :type="server.status === 'active' ? 'success' : 'danger'" size="small">
+                          {{ server.status === 'active' ? '启用' : '禁用' }}
+                        </el-tag>
+                      </div>
+                      <div style="color: #666; font-size: 13px; margin-bottom: 8px;">
+                        {{ server.description || '暂无描述' }}
+                      </div>
+                      <div style="color: #999; font-size: 12px;">
+                        <el-icon><Link /></el-icon>
+                        {{ server.url }}
+                      </div>
+                    </div>
+                  </div>
+                </el-card>
+              </div>
+            </el-scrollbar>
+          </div>
+        </el-tab-pane>
       </el-tabs>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -486,9 +549,9 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Plus, User, UserFilled, Bell, Warning, Document, Monitor, Edit, 
-  Folder, CircleCheck, Promotion, Refresh, More, Setting, Lock 
+  Folder, CircleCheck, Promotion, Refresh, More, Setting, Lock, Connection, Link
 } from '@element-plus/icons-vue'
-import api from '@/api'
+import api, { mcpApi } from '@/api'
 
 const agents = ref<any[]>([])
 const loading = ref(false)
@@ -517,13 +580,17 @@ const form = ref({
   system_prompt: '',
   model: 'qwen3.7-max',
   temperature: 0.7,
-  is_preset: false
+  is_preset: false,
+  mcp_server_ids: [] as string[]
 })
 
 const availableTools = ref<any[]>([])
 const toolsLoading = ref(false)
 const selectedTools = ref<Record<string, boolean>>({})
 const toolBindings = ref<Record<string, any>>({})
+
+const mcpServers = ref<any[]>([])
+const mcpServersLoading = ref(false)
 
 const toolConfigVisible = ref(false)
 const currentTool = ref<any>(null)
@@ -601,6 +668,21 @@ const loadTools = async () => {
   }
 }
 
+const loadMCPServers = async () => {
+  mcpServersLoading.value = true
+  try {
+    const res = await mcpApi.listServers()
+    if (res?.code === 200) {
+      mcpServers.value = res?.data?.servers || res?.servers || []
+    }
+  } catch (error: any) {
+    ElMessage.error('加载 MCP Servers失败: ' + error.message)
+    mcpServers.value = []
+  } finally {
+    mcpServersLoading.value = false
+  }
+}
+
 const loadAgentTools = async (agentId: string) => {
   try {
     const res = await api.get(`/agents/${agentId}/tools`)
@@ -629,6 +711,15 @@ const handleToolSelect = (tool: any) => {
     }
   } else {
     delete toolBindings.value[tool.id]
+  }
+}
+
+const handleMCPServerSelect = (serverId: string) => {
+  const index = form.value.mcp_server_ids.indexOf(serverId)
+  if (index > -1) {
+    form.value.mcp_server_ids.splice(index, 1)
+  } else {
+    form.value.mcp_server_ids.push(serverId)
   }
 }
 
@@ -782,7 +873,8 @@ function showCreateDialog() {
     system_prompt: '',
     model: 'qwen3.7-max',
     temperature: 0.7,
-    is_preset: false
+    is_preset: false,
+    mcp_server_ids: []
   }
   dialogVisible.value = true
 }
@@ -790,6 +882,16 @@ function showCreateDialog() {
 async function showEditDialog(row: any) {
   isEdit.value = true
   editId.value = row.id
+  
+  let mcpServerIds = []
+  if (row.mcp_server_ids) {
+    try {
+      mcpServerIds = JSON.parse(row.mcp_server_ids)
+    } catch (e) {
+      mcpServerIds = []
+    }
+  }
+  
   form.value = {
     name: row.name,
     avatar: row.avatar,
@@ -799,7 +901,8 @@ async function showEditDialog(row: any) {
     system_prompt: row.system_prompt,
     model: row.model,
     temperature: row.temperature,
-    is_preset: row.is_preset
+    is_preset: row.is_preset,
+    mcp_server_ids: mcpServerIds
   }
   dialogVisible.value = true
 }
@@ -814,15 +917,16 @@ const handleSubmit = async () => {
   try {
     let agentId = editId.value
     
+    const submitData = {
+      ...form.value,
+      mcp_server_ids: JSON.stringify(form.value.mcp_server_ids)
+    }
+    
     if (isEdit.value) {
-      const updates: any = {}
-      Object.keys(form.value).forEach(key => {
-        updates[key] = form.value[key as keyof typeof form.value]
-      })
-      await api.put(`/agents/${editId.value}`, updates)
+      await api.put(`/agents/${editId.value}`, submitData)
       ElMessage.success('更新成功')
     } else {
-      const res = await api.post('/agents', form.value)
+      const res = await api.post('/agents', submitData)
       if (res?.data?.id) {
         agentId = res.data.id
       }
@@ -899,6 +1003,7 @@ const formatTime = (time: string) => {
 
 onMounted(() => {
   loadAgents()
+  loadMCPServers()
 })
 
 const getRiskLevelType = (level: string) => {
@@ -908,7 +1013,7 @@ const getRiskLevelType = (level: string) => {
 
 <style scoped>
 .agent-manage {
-  padding: 20px;
+  padding: 0;
 }
 
 .card-header {

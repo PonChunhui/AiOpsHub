@@ -1,281 +1,134 @@
-# AiOpsHub - 智能运维平台
+# 📚 AiOpsHub 文档导航
 
-## 项目简介
+本目录包含项目的所有文档，按功能分类管理。
 
-AiOpsHub是一个基于多Agent架构的智能运维平台，采用**纯Go实现**（Vue3前端 + Go Backend + Temporal工作流引擎 + langchaingo Agent框架），用于智能告警降噪、故障诊断和自动化运维。
+## 📖 核心文档
 
-## 核心特性
+| 文档 | 说明 | 状态 |
+|------|------|------|
+| [PRD.md](./PRD.md) | 产品需求文档 | ✅ 核心文档 |
+| [architecture.md](./architecture.md) | 系统架构设计 | ✅ 核心文档 |
+| [PROJECT-SUMMARY.md](./PROJECT-SUMMARY.md) | 项目功能总结 | ✅ 核心文档 |
+| [FEATURES.md](./FEATURES.md) | 功能特性说明 | ✅ 核心文档 |
+| [README.md](./README.md) | 文档导航（本文件） | ✅ 导航文档 |
 
-- ✅ **纯Go架构**：不依赖Python，完全使用Go实现
-- ✅ **多Agent协作**：MonitorAgent、AnalysisAgent、RemediationAgent
-- ✅ **Workflow编排**：基于Temporal的工作流引擎
-- ✅ **LLM集成**：支持阿里云百炼、OpenAI等LLM
-- ✅ **智能告警分析**：AI驱动的告警降噪和根因分析
-- ✅ **自动修复建议**：基于历史数据的自动化修复方案
-- ✅ **Redis集群支持**：JWT token存储，支持集群和单机模式
-- ✅ **完整认证系统**：JWT + Redis双重验证
+## 🎨 设计文档
 
-## 系统架构
+详细设计文档位于 `design/` 目录：
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Vue3 Frontend                       │
-│  (Element Plus UI + Pinia + Axios + Vue Router)        │
-└─────────────────────────────────────────────────────────┘
-                            ↓ HTTP/REST API
-┌─────────────────────────────────────────────────────────┐
-│                   Go Backend (API Server)               │
-│  (Gin + GORM + JWT Auth + Redis Client)                │
-└─────────────────────────────────────────────────────────┘
-                            ↓ Temporal SDK
-┌─────────────────────────────────────────────────────────┐
-│                   Temporal Workflow Engine              │
-│  (Workflow Orchestration + Activity Execution)         │
-└─────────────────────────────────────────────────────────┘
-                            ↓ Agent Framework
-┌─────────────────────────────────────────────────────────┐
-│                 langchaingo Agent System                │
-│  (MonitorAgent + AnalysisAgent + RemediationAgent)     │
-└─────────────────────────────────────────────────────────┘
-                            ↓ LLM API
-┌─────────────────────────────────────────────────────────┐
-│                   LLM Provider (阿里云百炼)              │
-│            (qwen-turbo + dashscope API)                │
-└─────────────────────────────────────────────────────────┘
+| 文档 | 说明 |
+|------|------|
+| [design/database-design.md](./design/database-design.md) | 数据库设计 |
+| [design/temporal-workflow-design.md](./design/temporal-workflow-design.md) | Temporal工作流设计 |
+| [design/langchaingo-agent-design.md](./design/langchaingo-agent-design.md) | LangChainGo Agent设计 |
+| [design/coordinator-agent-quick-start.md](./design/coordinator-agent-quick-start.md) | Coordinator Agent快速开始 |
+| [design/implementation-summary.md](./design/implementation-summary.md) | 实现总结 |
 
-数据存储层：
-┌──────────────┬──────────────┬──────────────┐
-│ PostgreSQL   │ Redis Cluster│ Temporal DB  │
-│ (业务数据)    │ (JWT Token)  │ (Workflow)   │
-└──────────────┴──────────────┴──────────────┘
-```
+## 🔌 API文档
 
-## 技术栈
+API相关文档位于 `api/` 目录：
 
-### 后端
-- **语言**: Go 1.24+
-- **Web框架**: Gin
-- **数据库**: PostgreSQL + GORM
-- **缓存**: Redis (支持Cluster模式)
-- **工作流引擎**: Temporal
-- **Agent框架**: langchaingo
-- **LLM**: 阿里云百炼 (qwen-turbo)
-- **认证**: JWT + Redis双重验证
+| 文档 | 说明 |
+|------|------|
+| [api/api-reference.md](./api/api-reference.md) | API接口参考 |
+| [api/backend-api.md](./api/backend-api.md) | 后端API文档 |
 
-### 前端
-- **框架**: Vue 3
-- **UI库**: Element Plus
-- **状态管理**: Pinia
-- **HTTP客户端**: Axios
-- **路由**: Vue Router
+## 📘 使用指南
 
-### 基础设施
-- **Temporal Server**: 192.168.100.10:7233
-- **PostgreSQL**: 192.168.100.10:5432
-- **Redis Cluster**: 192.168.100.113-118:6379
+使用指南位于 `guides/` 目录：
 
-## 目录结构
+| 文档 | 说明 |
+|------|------|
+| [guides/quick-start.md](./guides/quick-start.md) | 快速开始指南 |
+| [guides/deployment.md](./guides/deployment.md) | 部署指南 |
+| [guides/frontend-development-guide.md](./guides/frontend-development-guide.md) | 前端开发指南 |
 
-```
-AiOpsHub/
-├── backend/                  # Go后端
-│   ├── cmd/                  # 主程序入口
-│   │   ├── api-server/       # API服务器
-│   │   └── temporal-worker/  # Temporal Worker
-│   ├── internal/             # 内部模块
-│   │   ├── agent/            # Agent实现
-│   │   ├── database/         # 数据库连接
-│   │   ├── handler/          # HTTP handlers
-│   │   ├── middleware/       # 中间件
-│   │   ├── model/            # 数据模型
-│   │   ├── repository/       # 数据访问层
-│   │   ├── service/          # 业务逻辑层
-│   │   └── temporal/         # Temporal集成
-│   ├── pkg/                  # 公共包
-│   │   ├── jwt/              # JWT工具
-│   │   ├── logger/           # 日志工具
-│   │   └── redis/            # Redis客户端
-│   ├── config/               # 配置文件
-│   ├── docs/                 # 后端文档
-│   └── bin/                  # 编译产物
-│
-├── frontend/                 # Vue3前端
-│   ├── src/
-│   │   ├── api/              # API调用
-│   │   ├── components/       # 组件
-│   │   ├── router/           # 路由配置
-│   │   ├── stores/           # Pinia stores
-│   │   └── views/            # 页面视图
-│   ├── public/               # 静态资源
-│   └── vite.config.ts        # Vite配置
-│
-└── docs/                     # 项目文档
-    ├── architecture.md       # 架构说明
-    ├── api-reference.md      # API文档
-    ├── deployment.md         # 部署指南
-    ├── user-guide.md         # 使用手册
-    └── development.md        # 开发文档
-```
+## 📦 归档文档
 
-## 快速开始
+历史文档和实施记录归档在 `archive/` 目录：
 
-### 前置要求
+### 2024-06 实施文档
+包含2024年6月的实施和调试文档：
+- `archive/2024-06/agent-tool-integration-status.md` - Agent工具集成状态
+- `archive/2024-06/auto-rag-implementation-summary.md` - RAG自动检索实施总结
+- `archive/2024-06/auto-rag-usage.md` - RAG使用说明
+- `archive/2024-06/chat-rag-diagnosis.md` - Chat RAG诊断
+- `archive/2024-06/chat-style-optimization.md` - Chat样式优化
+- `archive/2024-06/chat-window-optimization.md` - Chat窗口优化
+- `archive/2024-06/knowledge-model-change.md` - 知识模型变更
+- `archive/2024-06/KNOWLEDGE-MODEL-CHANGE-COMPLETE.md` - 知识模型变更完成报告
+- `archive/2024-06/markdown-render-fix.md` - Markdown渲染修复
+- `archive/2024-06/rag-reference-display-issue.md` - RAG引用显示问题
+- `archive/2024-06/rag-test-report.md` - RAG测试报告
+- `archive/2024-06/RAG_OPTIMIZATION_DEPLOYMENT.md` - RAG优化部署
+- `archive/2024-06/tool-management-implementation.md` - 工具管理实施
+- `archive/2024-06/tool-testing-guide.md` - 工具测试指南
+- `archive/2024-06/FINAL-SUMMARY.md` - 最终总结
+- `archive/2024-06/方案C-实施完成报告.md` - 方案C实施报告
+- `archive/2024-06/embedding-fix-validation-report.md` - Embedding修复验证
 
-- Go 1.24+
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 6+ (支持Cluster模式)
-- Temporal Server
+### 问题排查文档
+排查和调试文档：
+- `archive/troubleshooting/embedding-error-troubleshooting.md` - Embedding错误排查
+- `archive/troubleshooting/frontend-500-error-debug.md` - 前端500错误调试
 
-### 配置
+### 旧版文档
+- `archive/old-project-readme.md` - 旧版项目说明文档
 
-编辑 `backend/config/config.yaml`:
+## 📝 文档命名规范
 
-```yaml
-database:
-  host: "192.168.100.10"
-  port: 5432
-  user: "aiops"
-  password: "aiops123"
-  dbname: "aiopsdb"
+### 核心文档
+使用大写连字符命名：
+- `PRD.md` - 产品需求文档
+- `PROJECT-SUMMARY.md` - 项目总结
+- `FEATURES.md` - 功能特性
 
-redis:
-  cluster_mode: true
-  cluster_nodes:
-    - "192.168.100.113:6379"
-    - "192.168.100.114:6379"
-    - "192.168.100.115:6379"
-    - "192.168.100.116:6379"
-    - "192.168.100.117:6379"
-    - "192.168.100.118:6379"
-  password: "your_redis_password"
+### 设计文档
+使用小写连字符命名：
+- `database-design.md`
+- `temporal-workflow-design.md`
 
-temporal:
-  host: "192.168.100.10"
-  port: 7233
-  namespace: "default"
-  task_queue: "aiops-task-queue"
+### 归档文档
+归档文档按月份组织，添加前缀说明：
+- `archive/2024-06/rag-implementation-summary.md`
 
-jwt:
-  secret: "your-jwt-secret-key"
-  token_expire: 30m
+### 排查文档
+排查文档归档在 troubleshooting 目录：
+- `archive/troubleshooting/error-troubleshooting.md`
 
-llm:
-  provider: "aliyun_bailian"
-  model: "qwen-turbo"
-  api_key: "your-aliyun-api-key"
-```
+## 🔍 文档查找指南
 
-### 启动服务
+### 新手入门
+1. 先读 [PRD.md](./PRD.md) 了解产品定位
+2. 再读 [architecture.md](./architecture.md) 了解系统架构
+3. 最后读 [guides/quick-start.md](./guides/quick-start.md) 快速上手
 
-#### 1. 启动后端
+### 开发者
+1. 查看 [design/](./design/) 目录了解详细设计
+2. 参考 [api/](./api/) 目录了解API接口
+3. 需要调试时查看 [archive/troubleshooting/](./archive/troubleshooting/)
 
-```bash
-# 编译并启动API Server
-cd backend
-go build -o bin/api-server ./cmd/api-server
-./bin/api-server
+### 产品经理
+1. 阅读 [PRD.md](./PRD.md) 了解需求
+2. 查看 [PROJECT-SUMMARY.md](./PROJECT-SUMMARY.md) 了解功能实现
+3. 参考 [FEATURES.md](./FEATURES.md) 了解功能特性
 
-# 编译并启动Temporal Worker
-go build -o bin/temporal-worker ./cmd/temporal-worker
-./bin/temporal-worker
-```
+## 📌 文档维护
 
-#### 2. 启动前端
+### 添加新文档
+1. 核心文档：直接放在 `docs/` 根目录
+2. 设计文档：放在 `docs/design/`
+3. API文档：放在 `docs/api/`
+4. 使用指南：放在 `docs/guides/`
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 归档文档
+实施完成后，将实施文档归档到：
+- 一般实施文档：`docs/archive/YYYY-MM/`
+- 排查文档：`docs/archive/troubleshooting/`
 
-### 访问地址
+### 更新文档导航
+添加新文档后，更新本文件的目录列表。
 
-- **前端界面**: http://localhost:5174
-- **后端API**: http://localhost:8080
-- **Temporal Web UI**: http://192.168.100.10:8080
+---
 
-### 测试账号
-
-- admin / admin123
-- testuser / test123
-
-## 主要功能
-
-### 1. 告警智能分析
-- AI自动分析告警严重性
-- 识别根本原因
-- 提供修复建议
-
-### 2. Workflow编排
-- 支持复杂的告警处理流程
-- 多Agent协作执行
-- 实时状态监控
-
-### 3. Agent管理
-- 支持多种Agent类型
-- 可配置Agent参数
-- 监控Agent执行状态
-
-### 4. 用户认证
-- JWT token认证
-- Redis存储token
-- 支持token注销
-
-## API接口
-
-### 认证接口
-- POST `/api/v1/auth/login` - 登录
-- POST `/api/v1/auth/logout` - 注销
-- POST `/api/v1/auth/register` - 注册
-
-### Workflow接口
-- GET `/api/v1/workflows` - 列表
-- POST `/api/v1/workflows/execute` - 执行
-- GET `/api/v1/workflows/:id/status` - 状态
-- GET `/api/v1/workflows/:id/result` - 结果
-
-### Agent接口
-- GET `/api/v1/agents` - 列表
-- POST `/api/v1/agents` - 创建
-- PUT `/api/v1/agents/:id` - 更新
-
-完整API文档见: `docs/api-reference.md`
-
-## 部署指南
-
-详见: `docs/deployment.md`
-
-- Docker Compose部署
-- Kubernetes部署
-- 生产环境配置
-
-## 开发指南
-
-详见: `docs/development.md`
-
-- 代码结构说明
-- 开发流程
-- 测试方法
-- 最佳实践
-
-## 用户手册
-
-详见: `docs/user-guide.md`
-
-- 系统使用说明
-- 功能操作指南
-- 常见问题解答
-
-## License
-
-MIT License
-
-## 贡献指南
-
-欢迎提交Issue和Pull Request！
-
-## 联系方式
-
-- 项目地址: https://github.com/your-org/AiOpsHub
-- 文档地址: https://aiops-hub-docs.example.com
+**文档持续更新中，如有疑问请查看对应目录的详细文档。**

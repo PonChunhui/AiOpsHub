@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aiops/AiOpsHub/backend/internal/model"
@@ -17,14 +18,16 @@ type AgentBuilder struct {
 	toolSvc     *ToolService
 	einoToolSvc *EinoToolService
 	llm         *llm.EinoLLM
+	mcpSvc      *MCPService
 }
 
-func NewAgentBuilder(agentSvc *AgentService, toolSvc *ToolService, einoToolSvc *EinoToolService, llmInstance *llm.EinoLLM) *AgentBuilder {
+func NewAgentBuilder(agentSvc *AgentService, toolSvc *ToolService, einoToolSvc *EinoToolService, llmInstance *llm.EinoLLM, mcpSvc *MCPService) *AgentBuilder {
 	return &AgentBuilder{
 		agentSvc:    agentSvc,
 		toolSvc:     toolSvc,
 		einoToolSvc: einoToolSvc,
 		llm:         llmInstance,
+		mcpSvc:      mcpSvc,
 	}
 }
 
@@ -107,14 +110,30 @@ func (b *AgentBuilder) BuildAgentFromModel(ctx context.Context, agentModel *mode
 		logger.Error(fmt.Sprintf("获取Agent工具失败: %v", err))
 	}
 
-	var einoTools []tool.BaseTool
+	var builtinTools []tool.BaseTool
 	if len(tools) > 0 {
-		einoTools, err = b.einoToolSvc.LoadAgentTools(ctx, tools, bindings)
+		builtinTools, err = b.einoToolSvc.LoadAgentTools(ctx, tools, bindings)
 		if err != nil {
 			logger.Error(fmt.Sprintf("加载Eino工具失败: %v", err))
 		}
-		logger.Info(fmt.Sprintf("Agent %s 加载了 %d 个工具", agentModel.Name, len(einoTools)))
+		logger.Info(fmt.Sprintf("Agent %s 加载了 %d 个内置工具", agentModel.Name, len(builtinTools)))
 	}
+
+	var mcpTools []tool.BaseTool
+	if agentModel.MCPServerIDs != "" && b.mcpSvc != nil {
+		var mcpServerIDs []string
+		if err := json.Unmarshal([]byte(agentModel.MCPServerIDs), &mcpServerIDs); err != nil {
+			logger.Error(fmt.Sprintf("解析MCPServerIDs失败: %v", err))
+		} else if len(mcpServerIDs) > 0 {
+			mcpTools, err = b.einoToolSvc.LoadMCPToolsByServerIDs(ctx, b.mcpSvc, mcpServerIDs)
+			if err != nil {
+				logger.Error(fmt.Sprintf("加载MCP工具失败: %v", err))
+			}
+			logger.Info(fmt.Sprintf("Agent %s 加载了 %d 个MCP工具", agentModel.Name, len(mcpTools)))
+		}
+	}
+
+	allTools := append(builtinTools, mcpTools...)
 
 	agentConfig := &adk.ChatModelAgentConfig{
 		Model:       b.llm.GetChatModel(),
@@ -122,13 +141,13 @@ func (b *AgentBuilder) BuildAgentFromModel(ctx context.Context, agentModel *mode
 		Instruction: agentModel.SystemPrompt,
 	}
 
-	if len(einoTools) > 0 {
+	if len(allTools) > 0 {
 		agentConfig.ToolsConfig = adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: einoTools,
+				Tools: allTools,
 			},
 		}
-		logger.Info(fmt.Sprintf("Agent %s 配置了 ToolsConfig，包含 %d 个工具", agentModel.Name, len(einoTools)))
+		logger.Info(fmt.Sprintf("Agent %s 配置了 ToolsConfig，包含 %d 个工具", agentModel.Name, len(allTools)))
 	}
 
 	agent, err := adk.NewChatModelAgent(ctx, agentConfig)

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Calls SSE Analysis</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        h1 { color: #333; }
+        h2 { color: #666; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        pre { background: #f0f0f0; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        .issue { color: #e74c3c; }
+        .fix { color: #27ae60; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f8f8f8; }
+        .analysis { background: #fff3cd; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tool Calls SSE Stream Analysis</h1>
+        
+        <div class="section">
+            <h2>问题诊断</h2>
+            <div class="analysis">
+                <strong>根本原因：</strong>后端生成的tool_calls流式数据格式不符合OpenAI标准规范
+            </div>
+            
+            <h3>当前数据格式问题：</h3>
+            <table>
+                <tr>
+                    <th>Chunk序号</th>
+                    <th>Index</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Arguments</th>
+                    <th>问题</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>0</td>
+                    <td>call_d64f4737...</td>
+                    <td>ssh_exec</td>
+                    <td>{</td>
+                    <td class="issue">arguments不完整</td>
+                </tr>
+                <tr>
+                    <td>2-10</td>
+                    <td>1</td>
+                    <td>tc-1783323...</td>
+                    <td>-</td>
+                    <td>片段拼接</td>
+                    <td class="issue">使用了不同的index和ID！</td>
+                </tr>
+                <tr>
+                    <td>最后(finish)</td>
+                    <td>0 & 1</td>
+                    <td>两个ID</td>
+                    <td>-</td>
+                    <td>未完整合并</td>
+                    <td class="issue">两个独立的tool_call对象</td>
+                </tr>
+            </table>
+            
+            <h3>正确的OpenAI标准格式：</h3>
+            <pre class="fix">
+// 所有chunks应该使用相同的index和ID！
+
+Chunk 1:
+{
+  "tool_calls": [{
+    "index": 0,
+    "id": "call_d64f4737...",
+    "type": "function",
+    "function": {
+      "name": "ssh_exec",
+      "arguments": "{"
+    }
+  }]
+}
+
+Chunk 2:
+{
+  "tool_calls": [{
+    "index": 0,  // 相同的index！
+    "id": "call_d64f4737...",  // 相同的ID！
+    "type": "function",
+    "function": {
+      "arguments": "\"command\": \"free -h\", "
+    }
+  }]
+}
+
+Chunk 3:
+{
+  "tool_calls": [{
+    "index": 0,  // 相同的index！
+    "id": "call_d64f4737...",  // 相同的ID！
+    "type": "function",
+    "function": {
+      "arguments": "\"host\": \"192.168.100.186\"}"
+    }
+  }]
+}
+
+Final chunk:
+{
+  "tool_calls": [{
+    "index": 0,
+    "id": "call_d64f4737...",
+    "type": "function",
+    "function": {
+      "name": "ssh_exec",
+      "arguments": "{\"command\": \"free -h\", \"host\": \"192.168.100.186\"}"
+    }
+  }],
+  "finish_reason": "tool_calls"
+}
+            </pre>
+        </div>
+        
+        <div class="section">
+            <h2>前端合并逻辑分析</h2>
+            <p>tiny-robot-kit使用以下算法合并tool_calls：</p>
+            <pre>
+function mergeToolCalls(existing, incoming) {
+  // 1. 创建Map，以index为键
+  let existingMap = new Map(existing.map(tc => [tc.index, tc]));
+  let incomingMap = new Map(incoming.map(tc => [tc.index, tc]));
+  
+  // 2. 对于新数组中的每个元素
+  for (let [index, newTc] of incomingMap) {
+    if (existingMap.has(index)) {
+      // 3. 如果存在相同index，则合并
+      let oldTc = existingMap.get(index);
+      existingMap.set(index, deepMerge(oldTc, newTc));
+    } else {
+      // 4. 否则添加新元素
+      existingMap.set(index, newTc);
+    }
+  }
+  
+  // 5. 返回合并后的数组
+  return Array.from(existingMap.values());
+}
+            </pre>
+            
+            <div class="analysis">
+                <strong>问题：</strong>由于后端使用了index 0和index 1两个不同的index，
+                前端会将它们视为两个不同的工具调用，而不是同一个工具调用的分片！
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>解决方案</h2>
+            
+            <h3>方案1：修改后端（推荐）</h3>
+            <p>修改后端生成SSE流的代码，确保：</p>
+            <ol>
+                <li>所有tool_calls分片使用<strong>相同的index</strong>（通常为0）</li>
+                <li>所有tool_calls分片使用<strong>相同的ID</strong></li>
+                <li>第一个chunk包含<strong>完整的name</strong></li>
+                <li>后续chunks只包含<strong>arguments的增量</strong></li>
+                <li>最后的finish chunk包含<strong>完整的合并结果</strong></li>
+            </ol>
+            
+            <h3>方案2：修改前端（临时方案）</h3>
+            <p>如果暂时无法修改后端，可以在前端添加自定义处理逻辑：</p>
+            <pre>
+// 在responseProvider中添加transform函数
+responseProvider: async (requestBody, abortSignal) => {
+  const response = await fetch('/api/v1/chat/messages/stream/events', {
+    method: 'POST',
+    headers: { ... },
+    body: JSON.stringify({ ... }),
+    signal: abortSignal
+  });
+
+  if (!response.ok) throw new Error('Request failed');
+
+  // 自定义SSE流处理
+  return customSSEToGenerator(response);
+}
+
+// 自定义SSE流解析器
+async function* customSSEToGenerator(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  
+  // 用于合并tool_calls
+  const toolCallsBuffer = new Map();
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    
+    for (const line of lines) {
+      if (!line.trim() || !line.startsWith('data: ')) continue;
+      
+      const data = line.slice(6);
+      if (data === '[DONE]') return;
+      
+      try {
+        const chunk = JSON.parse(data);
+        
+        // 自定义处理tool_calls
+        if (chunk.choices?.[0]?.delta?.tool_calls) {
+          const deltaTc = chunk.choices[0].delta.tool_calls;
+          
+          // 合并逻辑：优先使用第一个完整出现的ID和name
+          for (const tc of deltaTc) {
+            const existingTc = toolCallsBuffer.get(tc.id);
+            
+            if (existingTc) {
+              // 合并arguments
+              existingTc.function.arguments += tc.function.arguments || '';
+            } else {
+              // 新的工具调用
+              toolCallsBuffer.set(tc.id, {
+                index: 0, // 强制使用相同的index！
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.function?.name || '',
+                  arguments: tc.function?.arguments || ''
+                }
+              });
+            }
+          }
+          
+          // 发送合并后的tool_calls（使用统一的index）
+          chunk.choices[0].delta.tool_calls = Array.from(toolCallsBuffer.values())
+            .map((tc, idx) => ({ ...tc, index: idx }));
+        }
+        
+        yield chunk;
+      } catch (e) {
+        console.warn('Failed to parse SSE data:', data, e);
+      }
+    }
+  }
+}
+            </pre>
+        </div>
+        
+        <div class="section">
+            <h2>示例对比</h2>
+            
+            <h3 class="issue">❌ 错误的格式（当前后端输出）：</h3>
+            <pre>
+// 第一个chunk - index 0
+{"tool_calls": [{"index": 0, "id": "call_abc", "function": {"name": "ssh_exec", "arguments": "{"}}]}
+
+// 后续chunks - index 1（错误！）
+{"tool_calls": [{"index": 1, "id": "tc_xyz", "function": {"arguments": "\"cmd\": ..."}}]}
+{"tool_calls": [{"index": 1, "id": "tc_xyz", "function": {"arguments": "\"host\": ..."}}]}
+
+// 最后finish - 两个独立的对象（错误！）
+{"tool_calls": [
+  {"index": 0, "id": "call_abc", "function": {"name": "ssh_exec", "arguments": "{"}},  // 不完整！
+  {"index": 1, "id": "tc_xyz", "function": {"arguments": "完整参数"}}  // 缺少name！
+], "finish_reason": "tool_calls"}
+            </pre>
+            
+            <h3 class="fix">✅ 正确的格式：</h3>
+            <pre>
+// 所有chunks - index 0
+{"tool_calls": [{"index": 0, "id": "call_abc", "function": {"name": "ssh_exec", "arguments": "{"}}]}
+{"tool_calls": [{"index": 0, "id": "call_abc", "function": {"arguments": "\"cmd\": ..."}}]}
+{"tool_calls": [{"index": 0, "id": "call_abc", "function": {"arguments": "\"host\": ..."}}]}
+
+// 最后finish - 一个完整的对象
+{"tool_calls": [
+  {"index": 0, "id": "call_abc", "function": {"name": "ssh_exec", "arguments": "完整JSON"}}
+], "finish_reason": "tool_calls"}
+            </pre>
+        </div>
+        
+        <div class="section">
+            <h2>测试工具</h2>
+            <p>运行以下代码测试前端合并逻辑：</p>
+            <button onclick="testMerge()">运行测试</button>
+            <div id="testResults"></div>
+            
+            <script>
+                // tiny-robot-kit的合并逻辑
+                const hasIndex = obj => typeof obj === 'object' && obj !== null && typeof obj.index === 'number';
+                
+                const deepMerge = (target, source) => {
+                    for (let [key, value] of Object.entries(source)) {
+                        let existing = target[key];
+                        
+                        if (existing) {
+                            if (typeof existing === 'string' && typeof value === 'string') {
+                                // 字符串拼接（除非是type字段）
+                                if (key === 'type' && existing) {
+                                    // 不拼接
+                                } else {
+                                    target[key] = existing + value;
+                                }
+                            } else if (Array.isArray(existing) && Array.isArray(value)) {
+                                if (existing.every(hasIndex) && value.every(hasIndex)) {
+                                    // 数组按index合并
+                                    let existingMap = new Map(existing.map(item => [item.index, item]));
+                                    let incomingMap = new Map(value.map(item => [item.index, item]));
+                                    
+                                    for (let [index, newItem] of incomingMap) {
+                                        if (existingMap.has(index)) {
+                                            existingMap.set(index, deepMerge(existingMap.get(index), newItem));
+                                        } else {
+                                            existingMap.set(index, newItem);
+                                        }
+                                    }
+                                    
+                                    let maxIndex = Math.max(...Array.from(existingMap.keys()), -1) + 1;
+                                    let result = maxIndex > existing.length 
+                                        ? Array.from({ length: maxIndex }) 
+                                        : existing;
+                                    
+                                    for (let [index, item] of existingMap) {
+                                        result[index] = item;
+                                    }
+                                    
+                                    target[key] = result;
+                                } else {
+                                    target[key] = [...existing, ...value];
+                                }
+                            } else if (typeof existing === 'object' && typeof value === 'object') {
+                                target[key] = deepMerge(existing, value);
+                            } else {
+                                target[key] = value;
+                            }
+                        } else {
+                            target[key] = value;
+                        }
+                    }
+                    return target;
+                };
+                
+                // 测试场景1：错误的后端格式（不同index）
+                function testWrongFormat() {
+                    console.log('=== 测试错误格式（不同index）===');
+                    
+                    let currentMessage = {
+                        role: 'assistant',
+                        tool_calls: []
+                    };
+                    
+                    // Chunk 1 - index 0
+                    let chunk1 = {
+                        choices: [{
+                            delta: {
+                                tool_calls: [{
+                                    index: 0,
+                                    id: 'call_abc',
+                                    type: 'function',
+                                    function: { name: 'ssh_exec', arguments: '{' }
+                                }]
+                            }
+                        }]
+                    };
+                    
+                    currentMessage = deepMerge(currentMessage, chunk1.choices[0].delta);
+                    console.log('After chunk 1:', JSON.stringify(currentMessage.tool_calls, null, 2));
+                    
+                    // Chunk 2 - index 1（错误！）
+                    let chunk2 = {
+                        choices: [{
+                            delta: {
+                                tool_calls: [{
+                                    index: 1,
+                                    id: 'tc_xyz',
+                                    type: 'function',
+                                    function: { arguments: '"command": "free -h"' }
+                                }]
+                            }
+                        }]
+                    };
+                    
+                    currentMessage = deepMerge(currentMessage, chunk2.choices[0].delta);
+                    console.log('After chunk 2:', JSON.stringify(currentMessage.tool_calls, null, 2));
+                    
+                    return {
+                        error: '生成了2个独立的tool_call对象',
+                        result: currentMessage.tool_calls
+                    };
+                }
+                
+                // 测试场景2：正确的后端格式（相同index）
+                function testCorrectFormat() {
+                    console.log('=== 测试正确格式（相同index）===');
+                    
+                    let currentMessage = {
+                        role: 'assistant',
+                        tool_calls: []
+                    };
+                    
+                    // Chunk 1 - index 0
+                    let chunk1 = {
+                        choices: [{
+                            delta: {
+                                tool_calls: [{
+                                    index: 0,
+                                    id: 'call_abc',
+                                    type: 'function',
+                                    function: { name: 'ssh_exec', arguments: '{' }
+                                }]
+                            }
+                        }]
+                    };
+                    
+                    currentMessage = deepMerge(currentMessage, chunk1.choices[0].delta);
+                    console.log('After chunk 1:', JSON.stringify(currentMessage.tool_calls, null, 2));
+                    
+                    // Chunk 2 - index 0（正确！）
+                    let chunk2 = {
+                        choices: [{
+                            delta: {
+                                tool_calls: [{
+                                    index: 0,
+                                    id: 'call_abc',
+                                    type: 'function',
+                                    function: { arguments: '"command": "free -h", ' }
+                                }]
+                            }
+                        }]
+                    };
+                    
+                    currentMessage = deepMerge(currentMessage, chunk2.choices[0].delta);
+                    console.log('After chunk 2:', JSON.stringify(currentMessage.tool_calls, null, 2));
+                    
+                    // Chunk 3 - index 0
+                    let chunk3 = {
+                        choices: [{
+                            delta: {
+                                tool_calls: [{
+                                    index: 0,
+                                    id: 'call_abc',
+                                    type: 'function',
+                                    function: { arguments: '"host": "192.168.100.186"}' }
+                                }]
+                            }
+                        }]
+                    };
+                    
+                    currentMessage = deepMerge(currentMessage, chunk3.choices[0].delta);
+                    console.log('After chunk 3:', JSON.stringify(currentMessage.tool_calls, null, 2));
+                    
+                    return {
+                        success: '生成了1个完整的tool_call对象',
+                        result: currentMessage.tool_calls
+                    };
+                }
+                
+                function testMerge() {
+                    const resultsDiv = document.getElementById('testResults');
+                    
+                    const wrongResult = testWrongFormat();
+                    const correctResult = testCorrectFormat();
+                    
+                    resultsDiv.innerHTML = `
+                        <h3 class="issue">❌ 错误格式测试结果：</h3>
+                        <pre>${JSON.stringify(wrongResult, null, 2)}</pre>
+                        
+                        <h3 class="fix">✅ 正确格式测试结果：</h3>
+                        <pre>${JSON.stringify(correctResult, null, 2)}</pre>
+                        
+                        <div class="analysis">
+                            <strong>结论：</strong>使用相同index时，arguments正确合并；
+                            使用不同index时，会生成多个独立的tool_call对象，导致显示错误。
+                        </div>
+                    `;
+                }
+            </script>
+        </div>
+    </div>
+</body>
+</html>

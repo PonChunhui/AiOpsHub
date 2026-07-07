@@ -428,7 +428,7 @@ onMounted(() => {
 
 <style scoped>
 .mcp-manage {
-  padding: 20px;
+  padding: 0;
 }
 .card-header {
   display: flex;

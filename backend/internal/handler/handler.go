@@ -164,6 +164,7 @@ func CreateAgent(c *gin.Context) {
 		Model        string  `json:"model"`
 		Temperature  float64 `json:"temperature"`
 		IsPreset     bool    `json:"is_preset"`
+		MCPServerIDs string  `json:"mcp_server_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -192,6 +193,7 @@ func CreateAgent(c *gin.Context) {
 		req.Model,
 		req.Temperature,
 		req.IsPreset,
+		req.MCPServerIDs,
 	)
 	if err != nil {
 		ErrorResponse(c, http.StatusInternalServerError, "创建 Agent 失败")

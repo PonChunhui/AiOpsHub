@@ -15,6 +15,7 @@ type Config struct {
 	Temporal TemporalConfig
 	LLM      LLMConfig
 	Milvus   MilvusConfig
+	Chat     ChatConfig
 	JWT      JWTConfig
 	Log      LogConfig
 }
@@ -67,6 +68,13 @@ type MilvusConfig struct {
 	Collection string
 }
 
+type ChatConfig struct {
+	EnableHistory      bool
+	MaxHistoryMessages int
+	MaxHistoryTokens   int
+	MaxTotalTokens     int
+}
+
 type JWTConfig struct {
 	Secret string
 	Expire time.Duration
@@ -112,6 +120,11 @@ func Init() error {
 	viper.SetDefault("llm.temperature", 0.7)
 	viper.SetDefault("llm.max_tokens", 2000)
 	viper.SetDefault("llm.enable_rag", true) // 默认启用RAG
+
+	viper.SetDefault("chat.enable_history", true)
+	viper.SetDefault("chat.max_history_messages", 20)
+	viper.SetDefault("chat.max_history_tokens", 4000)
+	viper.SetDefault("chat.max_total_tokens", 8000)
 
 	viper.SetDefault("jwt.secret", "aiops-jwt-secret-key-2024")
 	viper.SetDefault("jwt.expire", "24h")
@@ -174,6 +187,12 @@ func GetConfig() *Config {
 			Host:       viper.GetString("milvus.host"),
 			Port:       viper.GetInt("milvus.port"),
 			Collection: viper.GetString("milvus.collection"),
+		},
+		Chat: ChatConfig{
+			EnableHistory:      viper.GetBool("chat.enable_history"),
+			MaxHistoryMessages: viper.GetInt("chat.max_history_messages"),
+			MaxHistoryTokens:   viper.GetInt("chat.max_history_tokens"),
+			MaxTotalTokens:     viper.GetInt("chat.max_total_tokens"),
 		},
 		JWT: JWTConfig{
 			Secret: viper.GetString("jwt.secret"),

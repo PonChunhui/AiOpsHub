@@ -7,41 +7,40 @@ import (
 
 	"github.com/aiops/AiOpsHub/backend/internal/agent/eino_tools"
 	"github.com/aiops/AiOpsHub/backend/internal/model"
+	"github.com/aiops/AiOpsHub/backend/internal/repository"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
+	"github.com/aiops/AiOpsHub/backend/pkg/mcp"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
 
-// ToolFactory Eino工具工厂
 type ToolFactory struct {
 	toolModels map[string]*model.Tool
+	hostRepo   *repository.HostRepository
 }
 
-// NewToolFactory 创建工具工厂
-func NewToolFactory() *ToolFactory {
+func NewToolFactory(hostRepo *repository.HostRepository) *ToolFactory {
 	return &ToolFactory{
 		toolModels: make(map[string]*model.Tool),
+		hostRepo:   hostRepo,
 	}
 }
 
-// RegisterTool 注册工具模型
 func (f *ToolFactory) RegisterTool(toolModel *model.Tool) {
 	f.toolModels[toolModel.Name] = toolModel
 	logger.Info(fmt.Sprintf("注册工具模型: %s", toolModel.Name))
 }
 
-// CreateTool 创建Eino工具实例
 func (f *ToolFactory) CreateTool(toolName string, configOverride map[string]interface{}) (tool.InvokableTool, error) {
 	toolModel, ok := f.toolModels[toolName]
 	if !ok {
 		return nil, fmt.Errorf("工具未注册: %s", toolName)
 	}
 
-	// 根据工具名称创建对应的实例
 	switch toolName {
 	case "ssh_exec":
-		return eino_tools.NewSSHTool(toolModel, configOverride), nil
+		return eino_tools.NewSSHTool(toolModel, configOverride, f.hostRepo), nil
 	case "prometheus_query":
 		return eino_tools.NewPrometheusTool(toolModel, configOverride), nil
 	case "kubernetes_query":
@@ -53,7 +52,6 @@ func (f *ToolFactory) CreateTool(toolName string, configOverride map[string]inte
 	}
 }
 
-// CreateToolsForAgent 为Agent创建工具列表
 func (f *ToolFactory) CreateToolsForAgent(tools []model.Tool, bindings []model.AgentTool) ([]tool.BaseTool, error) {
 	var baseTools []tool.BaseTool
 
@@ -95,14 +93,13 @@ type EinoToolService struct {
 	factory *ToolFactory
 }
 
-// NewEinoToolService 创建Eino工具服务
 func NewEinoToolService() *EinoToolService {
+	hostRepo := repository.NewHostRepository()
 	return &EinoToolService{
-		factory: NewToolFactory(),
+		factory: NewToolFactory(hostRepo),
 	}
 }
 
-// LoadAgentTools 加载Agent的工具并返回Eino工具列表
 func (s *EinoToolService) LoadAgentTools(ctx context.Context, tools []model.Tool, bindings []model.AgentTool) ([]tool.BaseTool, error) {
 	// 注册所有工具模型
 	for _, toolModel := range tools {
@@ -177,4 +174,30 @@ func (s *EinoToolService) ExecuteToolsBatch(ctx context.Context, toolsNode *comp
 	logger.Info(fmt.Sprintf("批量执行成功，返回 %d 个结果", len(results)))
 
 	return results, nil
+}
+
+type MCPServiceInterface interface {
+	GetTools(ctx context.Context, serverID string) ([]mcp.Tool, error)
+	CallTool(ctx context.Context, serverID string, toolName string, arguments map[string]interface{}) (*mcp.ToolCallResult, error)
+}
+
+func (s *EinoToolService) LoadMCPToolsByServerIDs(ctx context.Context, mcpSvc MCPServiceInterface, serverIDs []string) ([]tool.BaseTool, error) {
+	var allTools []tool.BaseTool
+
+	for _, serverID := range serverIDs {
+		tools, err := mcpSvc.GetTools(ctx, serverID)
+		if err != nil {
+			logger.Error(fmt.Sprintf("获取MCP Server %s的工具失败: %v", serverID, err))
+			continue
+		}
+
+		for _, toolDef := range tools {
+			mcpTool := eino_tools.NewMCPTool(serverID, toolDef, mcpSvc)
+			allTools = append(allTools, mcpTool)
+			logger.Info(fmt.Sprintf("加载MCP工具: %s (Server: %s)", toolDef.Name, serverID))
+		}
+	}
+
+	logger.Info(fmt.Sprintf("成功加载 %d 个MCP工具", len(allTools)))
+	return allTools, nil
 }

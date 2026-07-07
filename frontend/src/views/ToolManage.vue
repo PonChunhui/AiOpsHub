@@ -662,7 +662,7 @@ onMounted(() => {
 
 <style scoped>
 .tool-manage {
-  padding: 20px;
+  padding: 0;
 }
 
 .card-header {

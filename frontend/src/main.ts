@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import '@opentiny/tiny-robot/dist/style.css'
 import App from './App.vue'
 import router from './router'
 import './styles/common.css'
@@ -10,6 +11,7 @@ import './styles/sidebar.css'
 import './styles/header.css'
 import './styles/login.css'
 import './styles/document-editor.css'
+import './styles/tiny-robot-overrides.css'
 
 const app = createApp(App)
 const pinia = createPinia()

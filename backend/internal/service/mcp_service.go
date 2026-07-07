@@ -231,3 +231,38 @@ func (s *MCPService) FindServerByToolName(ctx context.Context, toolName string) 
 
 	return "", fmt.Errorf("tool %s not found in any active MCP server", toolName)
 }
+
+func (s *MCPService) GetToolsByServerIDs(ctx context.Context, serverIDs []string) (map[string][]mcp.Tool, error) {
+	if len(serverIDs) == 0 {
+		return make(map[string][]mcp.Tool), nil
+	}
+
+	servers, err := s.repo.GetByIDs(serverIDs)
+	if err != nil {
+		return nil, fmt.Errorf("获取MCP服务器失败: %w", err)
+	}
+
+	if len(servers) == 0 {
+		return nil, fmt.Errorf("未找到指定的MCP服务器")
+	}
+
+	result := make(map[string][]mcp.Tool)
+	for _, server := range servers {
+		client := s.getClient(&server)
+
+		if client.SessionID == "" {
+			_, err := client.Initialize(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("初始化MCP服务器 %s 失败: %w", server.Name, err)
+			}
+		}
+
+		tools, err := client.ListTools(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("获取 %s 工具列表失败: %w", server.Name, err)
+		}
+		result[server.Name] = tools
+	}
+
+	return result, nil
+}

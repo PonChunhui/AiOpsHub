@@ -12,27 +12,20 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   
   const login = async (user: string, pass: string) => {
-    try {
-      const res = await authApi.login(user, pass)
+    const res = await authApi.login(user, pass)
+    
+    if (res && res.code === 200) {
+      token.value = res.data.token || 'mock-token'
+      username.value = res.data.username
+      userId.value = res.data.user_id
       
-      if (res && res.code === 200) {
-        token.value = res.data.token || 'mock-token'
-        username.value = res.data.username
-        userId.value = res.data.user_id
-        
-        localStorage.setItem('token', token.value)
-        localStorage.setItem('username', username.value)
-        localStorage.setItem('userId', userId.value)
-        
-        return true
-      } else {
-        ElMessage.error(res.message || '登录失败')
-        return false
-      }
-    } catch (error: any) {
-      console.error('登录失败:', error)
-      ElMessage.error(error.message || '登录失败')
-      return false
+      localStorage.setItem('token', token.value)
+      localStorage.setItem('username', username.value)
+      localStorage.setItem('userId', userId.value)
+      
+      return true
+    } else {
+      throw new Error(res.message || '登录失败')
     }
   }
   

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aiops/AiOpsHub/backend/internal/model"
 	"github.com/aiops/AiOpsHub/backend/internal/service"
 	"github.com/aiops/AiOpsHub/backend/pkg/llm"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
@@ -68,8 +69,9 @@ type CreateSessionRequest struct {
 
 // SendMessageRequest 发送消息请求结构
 type SendMessageRequest struct {
-	SessionID string `json:"session_id" binding:"required"` // 会话ID
-	Content   string `json:"content" binding:"required"`    // 消息内容
+	SessionID      string `json:"session_id" binding:"required"` // 会话ID
+	Content        string `json:"content" binding:"required"`    // 消息内容
+	EnableThinking bool   `json:"enable_thinking"`               // 是否启用思考过程显示（可选，默认false）
 }
 
 // CreateSession 创建新的对话会话
@@ -155,9 +157,10 @@ func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "close")
+	c.Header("Cache-Control", "no-cache, no-transform")
+	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no")
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
@@ -201,14 +204,81 @@ func (h *ChatHandler) SendMessageStream(c *gin.Context) {
 	logger.Info("SSE stream completed, connection will close")
 }
 
-// sendSSE 发送SSE事件到客户端
-// 参数：
-//   - c: Gin上下文
-//   - flusher: HTTP Flusher用于立即刷新数据到客户端
-//   - event: SSE事件类型
-//   - data: 要发送的数据对象
-//
-// 说明：按照SSE协议格式发送事件，确保数据立即flush到客户端
+func (h *ChatHandler) SendMessageStreamWithEvents(c *gin.Context) {
+	var req SendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		return
+	}
+
+	// 调用Service层，传递enable_thinking参数
+	eventChan, _, ragReferences, err := h.chatService.StreamSendMessageWithEvents(
+		c.Request.Context(),
+		req.SessionID,
+		req.Content,
+		req.EnableThinking, // 传递深度思考开关
+	)
+	if err != nil {
+		logger.Error(fmt.Sprintf("流式发送消息失败: %v", err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache, no-transform")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no")
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "不支持流式输出"})
+		return
+	}
+
+	// 初始化工具调用缓冲区（用于合并流式分片）
+	toolCallsBuffer := model.NewToolCallsBuffer()
+	fullContent := ""
+
+	// 转换并发送OpenAI格式的流式响应
+	for event := range eventChan {
+		// 将AgentEvent转换为OpenAI ChatCompletionChunk格式
+		openaiChunk, err := model.ConvertAgentEventToOpenAIChunk(event, toolCallsBuffer)
+		if err != nil {
+			logger.Error(fmt.Sprintf("转换OpenAI格式失败: %v", err))
+			continue
+		}
+
+		// 只发送转换成功的事件（nil表示该事件不需要发送给前端）
+		if openaiChunk != nil {
+			// 发送OpenAI标准SSE格式
+			c.Writer.WriteString(openaiChunk.ToSSE())
+			flusher.Flush()
+
+			// 同时保存完整内容（用于数据库存储）
+			if event.Type == model.EventContentChunk {
+				if data, ok := event.Data.(model.ContentChunkEventData); ok {
+					fullContent += data.Content
+				}
+			}
+		}
+	}
+
+	// 保存AI消息到数据库（包括RAG引用）
+	aiMsg, err := h.chatService.SaveAIMessage(req.SessionID, fullContent, ragReferences)
+	if err != nil {
+		logger.Error(fmt.Sprintf("保存AI消息失败: %v", err))
+	} else {
+		logger.Info(fmt.Sprintf("AI消息已保存: ID=%s, ContentLen=%d", aiMsg.ID, len(fullContent)))
+	}
+
+	// 发送OpenAI标准的[DONE]标记（表示流结束）
+	c.Writer.WriteString("data: [DONE]\n\n")
+	flusher.Flush()
+
+	logger.Info("OpenAI格式流式输出完成，连接将关闭")
+}
+
 func sendSSE(c *gin.Context, flusher http.Flusher, event string, data interface{}) {
 	// 将数据转换为紧凑的JSON字符串（不含换行符）
 	jsonData := toJson(data)

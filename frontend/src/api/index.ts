@@ -87,7 +87,7 @@ api.interceptors.response.use(
       showError('服务器错误(504)：请求超时，请稍后重试')
     } else if (error.message?.includes('Network Error') || error.message?.includes('Failed to fetch')) {
       showError('网络连接失败，请检查网络或后端服务是否可用')
-    } else {
+    } else if (!(error.response?.status === 401 && error.config?.url?.includes('/auth/login'))) {
       showError('请求失败: ' + (error.response?.data?.message || error.message))
     }
     
@@ -264,20 +264,34 @@ export const remediationApi = {
 
 // AI对话助手API
 export const chatApi = {
-  // 创建新会话
   createSession: (title: string, model: string = 'gpt-3.5-turbo'): Promise<ApiResponse> =>
     api.post('/chat/sessions', { title, model }),
-  // 获取用户的所有会话列表
   getSessions: (): Promise<ApiResponse> => api.get('/chat/sessions'),
-  // 获取会话历史记录
   getSessionHistory: (sessionId: string): Promise<ApiResponse> =>
     api.get(`/chat/sessions/${sessionId}/history`),
-  // 删除会话
   deleteSession: (sessionId: string): Promise<ApiResponse> =>
     api.delete(`/chat/sessions/${sessionId}`),
-  // 发送消息并获取AI回复
   sendMessage: (sessionId: string, content: string): Promise<ApiResponse> =>
     api.post('/chat/messages', { session_id: sessionId, content })
+}
+
+export const hostApi = {
+  getGroupTree: (): Promise<ApiResponse> => api.get('/host-groups'),
+  getGroupByID: (id: string): Promise<ApiResponse> => api.get(`/host-groups/${id}`),
+  createGroup: (data: any): Promise<ApiResponse> => api.post('/host-groups', data),
+  updateGroup: (id: string, data: any): Promise<ApiResponse> => api.put(`/host-groups/${id}`, data),
+  deleteGroup: (id: string): Promise<ApiResponse> => api.delete(`/host-groups/${id}`),
+  checkGroupCascade: (id: string): Promise<ApiResponse> => api.get(`/host-groups/${id}/check-cascade`),
+  
+  listHosts: (params?: any): Promise<ApiResponse> => api.get('/hosts', { params }),
+  getHostByID: (id: string): Promise<ApiResponse> => api.get(`/hosts/${id}`),
+  createHost: (data: any): Promise<ApiResponse> => api.post('/hosts', data),
+  updateHost: (id: string, data: any): Promise<ApiResponse> => api.put(`/hosts/${id}`, data),
+  deleteHost: (id: string): Promise<ApiResponse> => api.delete(`/hosts/${id}`),
+  batchImportHosts: (formData: FormData): Promise<ApiResponse> =>
+    api.post('/hosts/batch-import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  batchDeleteHosts: (ids: string[]): Promise<ApiResponse> => api.post('/hosts/batch-delete', { ids }),
+  testConnection: (id: string): Promise<ApiResponse> => api.post(`/hosts/${id}/test-connection`)
 }
 
 export default api

@@ -23,6 +23,11 @@
           <span>Agent管理</span>
         </el-menu-item>
         
+        <el-menu-item index="/host-manage" class="sidebar-menu-item">
+          <el-icon><Platform /></el-icon>
+          <span>主机管理</span>
+        </el-menu-item>
+        
         <el-menu-item index="/alerts-manage" class="sidebar-menu-item">
           <el-icon><Bell /></el-icon>
           <span>告警管理</span>
@@ -95,7 +100,8 @@ import {
   Setting,
   Cloudy,
   SwitchButton,
-  ChatDotRound
+  ChatDotRound,
+  Platform
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

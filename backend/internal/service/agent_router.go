@@ -137,6 +137,15 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 			},
 			weight: 2,
 		},
+		"preset-pipeline-helper": {
+			keywords: []string{
+				"流水线", "jenkins", "job", "作业", "构建",
+				"pipeline", "ci", "cd", "构建状态", "触发构建",
+				"流水线助手", "jenkins job", "ci/cd", "持续集成",
+				"持续部署", "构建历史", "作业列表",
+			},
+			weight: 11,
+		},
 	}
 
 	// 特殊关键词（单独处理，避免冲突）
@@ -155,6 +164,7 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 
 	matches := []Match{}
 
+	// 第一阶段：匹配预设规则（高优先级）
 	for _, agent := range agents {
 		if ruleConfig, ok := rules[agent.ID]; ok {
 			matchCount := 0
@@ -172,8 +182,68 @@ func (r *AgentRouter) routeByRules(userMessage string) *model.Agent {
 					score: score,
 					count: matchCount,
 				})
-				logger.Debug(fmt.Sprintf("  Agent %s 匹配 %d 个关键词，得分: %d", agent.Name, matchCount, score))
+				logger.Debug(fmt.Sprintf("  Agent %s 匹配 %d 个预设关键词，得分: %d", agent.Name, matchCount, score))
 			}
+		}
+	}
+
+	// 第二阶段：动态匹配所有启用的agent（包括自定义agent）
+	// 匹配agent name、category、description中的关键词
+	for _, agent := range agents {
+		// 检查是否已经在预设规则中匹配过（避免重复计算）
+		alreadyMatched := false
+		for _, m := range matches {
+			if m.agent.ID == agent.ID {
+				alreadyMatched = true
+				break
+			}
+		}
+
+		if alreadyMatched {
+			continue
+		}
+
+		dynamicScore := 0
+
+		// 匹配 agent name
+		if strings.Contains(messageLower, strings.ToLower(agent.Name)) {
+			dynamicScore += 15 // name匹配权重高
+			logger.Debug(fmt.Sprintf("  Agent %s name匹配，得分: +15", agent.Name))
+		}
+
+		// 匹配 agent category
+		if strings.Contains(messageLower, strings.ToLower(agent.Category)) {
+			dynamicScore += 10
+			logger.Debug(fmt.Sprintf("  Agent %s category匹配，得分: +10", agent.Name))
+		}
+
+		// 匹配 agent description中的关键词（提取description中的关键名词）
+		descLower := strings.ToLower(agent.Description)
+		descKeywords := []string{}
+		// 提取description中的关键词（简单的关键词提取：提取中文词组和英文单词）
+		words := strings.Fields(descLower)
+		for _, word := range words {
+			// 跳过太短的词和常见词
+			if len(word) > 2 && !isCommonWord(word) {
+				descKeywords = append(descKeywords, word)
+			}
+		}
+
+		// 检查用户消息是否包含description关键词
+		for _, keyword := range descKeywords {
+			if strings.Contains(messageLower, keyword) {
+				dynamicScore += 3
+				logger.Debug(fmt.Sprintf("  Agent %s description关键词'%s'匹配，得分: +3", agent.Name, keyword))
+			}
+		}
+
+		// 如果有动态匹配得分，加入matches列表
+		if dynamicScore > 0 {
+			matches = append(matches, Match{
+				agent: &agent,
+				score: dynamicScore,
+				count: 1,
+			})
 		}
 	}
 
@@ -261,4 +331,22 @@ func (r *AgentRouter) GetAgentSystemPrompt(agentID string) string {
 	}
 
 	return agent.SystemPrompt
+}
+
+// isCommonWord 检查是否是常见词（需要过滤掉）
+func isCommonWord(word string) bool {
+	commonWords := []string{
+		"的", "是", "在", "有", "和", "与", "或", "能", "够", "会", "可", "以",
+		"对", "于", "从", "到", "为", "了", "并", "且", "但", "而", "也",
+		"这", "那", "它", "他", "她", "我", "你", "们",
+		"一个", "一些", "所有", "每个", "任何", "某个", "该",
+		"agent", "智能", "专业", "专家", "职责", "帮助", "人员",
+	}
+
+	for _, common := range commonWords {
+		if word == common {
+			return true
+		}
+	}
+	return false
 }

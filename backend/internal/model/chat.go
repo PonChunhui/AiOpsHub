@@ -25,6 +25,7 @@ type ChatMessage struct {
 	SessionID     string    `json:"session_id" gorm:"not null;type:varchar(36);index"` // 会话ID
 	Role          string    `json:"role" gorm:"not null;type:varchar(20)"`             // 角色：user, assistant, system
 	Content       string    `json:"content" gorm:"type:text"`                          // 消息内容（支持markdown）
+	ToolCalls     string    `json:"tool_calls" gorm:"type:text"`                       // 工具调用的JSON数据
 	Tokens        int       `json:"tokens" gorm:"default:0"`                           // Token数量
 	RAGReferences string    `json:"rag_references" gorm:"type:text"`                   // RAG引用的JSON数据
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime;index"`            // 创建时间
@@ -37,6 +38,7 @@ type ChatMessageResponse struct {
 	SessionID     string                   `json:"session_id"`
 	Role          string                   `json:"role"`
 	Content       string                   `json:"content"`
+	ToolCalls     []map[string]interface{} `json:"tool_calls"` // 解析后的工具调用数组
 	Tokens        int                      `json:"tokens"`
 	RAGReferences []map[string]interface{} `json:"rag_references"`
 	CreatedAt     time.Time                `json:"created_at"`

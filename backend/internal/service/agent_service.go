@@ -23,7 +23,7 @@ func NewAgentService() *AgentService {
 	}
 }
 
-func (s *AgentService) Create(name, avatar, role, category, description, systemPrompt, modelName string, temperature float64, isPreset bool) (*model.Agent, error) {
+func (s *AgentService) Create(name, avatar, role, category, description, systemPrompt, modelName string, temperature float64, isPreset bool, mcpServerIDs string) (*model.Agent, error) {
 	agent := &model.Agent{
 		ID:           uuid.New().String(),
 		Name:         name,
@@ -36,6 +36,7 @@ func (s *AgentService) Create(name, avatar, role, category, description, systemP
 		Temperature:  temperature,
 		IsPreset:     isPreset,
 		Enabled:      true,
+		MCPServerIDs: mcpServerIDs,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -88,6 +89,9 @@ func (s *AgentService) Update(id string, updates map[string]interface{}) (*model
 	}
 	if enabled, ok := updates["enabled"].(bool); ok {
 		agent.Enabled = enabled
+	}
+	if mcpServerIDs, ok := updates["mcp_server_ids"].(string); ok {
+		agent.MCPServerIDs = mcpServerIDs
 	}
 
 	agent.UpdatedAt = time.Now()

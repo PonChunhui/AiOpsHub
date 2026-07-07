@@ -223,8 +223,7 @@ onMounted(async () => {
 
 <style scoped>
 .home-container {
-  padding: 20px;
-  background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
+  padding: 0;
   min-height: calc(100vh - 60px);
 }
 

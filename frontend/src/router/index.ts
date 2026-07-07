@@ -68,7 +68,7 @@ const router = createRouter({
     {
       path: '/ai-assistant',
       name: 'ai-assistant',
-      component: () => import('@/views/AIAssistant.vue'),
+      component: () => import('@/views/AIAssistant-TinyRobot.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -81,6 +81,12 @@ const router = createRouter({
       path: '/tools-manage',
       name: 'tools-manage',
       component: () => import('@/views/ToolManage.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/host-manage',
+      name: 'host-manage',
+      component: () => import('@/views/HostManage.vue'),
       meta: { requiresAuth: true }
     }
   ]

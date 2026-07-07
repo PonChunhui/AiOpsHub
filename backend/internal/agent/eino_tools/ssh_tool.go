@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/aiops/AiOpsHub/backend/internal/model"
+	"github.com/aiops/AiOpsHub/backend/internal/repository"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
 	"golang.org/x/crypto/ssh"
 )
 
-// SSHTool Eino标准的SSH工具实现
 type SSHTool struct {
-	tool   *model.Tool
-	config map[string]interface{}
+	tool     *model.Tool
+	config   map[string]interface{}
+	hostRepo *repository.HostRepository
 }
 
-// SSHConfig SSH连接配置
 type SSHConfig struct {
 	Username   string        `json:"username"`
 	Password   string        `json:"password"`
@@ -29,27 +29,24 @@ type SSHConfig struct {
 	Timeout    time.Duration `json:"timeout"`
 }
 
-// NewSSHTool 创建SSH工具实例
-func NewSSHTool(toolModel *model.Tool, configOverride map[string]interface{}) tool.InvokableTool {
-	config := make(map[string]interface{})
+func NewSSHTool(toolModel *model.Tool, configOverride map[string]interface{}, hostRepo *repository.HostRepository) tool.InvokableTool {
+	config := map[string]interface{}{}
 
-	// 解析默认配置
 	if toolModel.DefaultConfig != "" {
 		json.Unmarshal([]byte(toolModel.DefaultConfig), &config)
 	}
 
-	// 应用配置覆盖
 	for k, v := range configOverride {
 		config[k] = v
 	}
 
 	return &SSHTool{
-		tool:   toolModel,
-		config: config,
+		tool:     toolModel,
+		config:   config,
+		hostRepo: hostRepo,
 	}
 }
 
-// Info 返回工具信息（Eino标准接口）
 func (t *SSHTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "ssh_exec",
@@ -139,7 +136,11 @@ func (t *SSHTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts
 		return "", fmt.Errorf("主机 '%s' 不在白名单中", args.Host)
 	}
 
-	sshConfig := t.getSSHConfig()
+	sshConfig, err := t.getSSHConfig(args.Host)
+	if err != nil {
+		logger.Error(fmt.Sprintf("获取SSH配置失败: %v", err))
+		return fmt.Sprintf("配置错误: %v", err), err
+	}
 
 	result, err := t.executeSSHCommand(ctx, args.Host, args.Command, sshConfig)
 	if err != nil {
@@ -151,37 +152,32 @@ func (t *SSHTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts
 	return result, nil
 }
 
-func (t *SSHTool) getSSHConfig() *SSHConfig {
+func (t *SSHTool) getSSHConfig(host string) (*SSHConfig, error) {
+	hostInfo, err := t.hostRepo.FindHostByIdentifier(host)
+	if err != nil {
+		return nil, fmt.Errorf("查询主机失败: %w", err)
+	}
+	if hostInfo == nil {
+		return nil, fmt.Errorf("主机 '%s' 不在数据库中，拒绝执行命令", host)
+	}
+
 	config := &SSHConfig{
-		Username: "root",
-		Password: "idc.linux66.CN",
-		Port:     22,
+		Username: hostInfo.Username,
+		Port:     hostInfo.Port,
 		Timeout:  30 * time.Second,
 	}
 
-	if username, ok := t.config["username"].(string); ok && username != "" {
-		config.Username = username
-	} else {
-		config.Username = "root"
-	}
-
-	if password, ok := t.config["password"].(string); ok && password != "" {
-		config.Password = password
-	}
-
-	if privateKey, ok := t.config["private_key"].(string); ok && privateKey != "" {
-		config.PrivateKey = privateKey
-	}
-
-	if port, ok := t.config["port"].(int); ok && port > 0 {
-		config.Port = port
+	if hostInfo.AuthType == "password" {
+		config.Password = hostInfo.Password
+	} else if hostInfo.AuthType == "key" {
+		config.PrivateKey = hostInfo.PrivateKey
 	}
 
 	if timeout, ok := t.config["timeout"].(int); ok && timeout > 0 {
 		config.Timeout = time.Duration(timeout) * time.Second
 	}
 
-	return config
+	return config, nil
 }
 
 func (t *SSHTool) executeSSHCommand(ctx context.Context, host, command string, sshConfig *SSHConfig) (string, error) {

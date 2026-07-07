@@ -206,6 +206,66 @@ func (e *EinoLLM) StreamGenerate(ctx context.Context, prompt string) (<-chan str
 	return outputChan, nil
 }
 
+// StreamResult 包含内容和思考过程的流式结果
+type StreamResult struct {
+	Content          string
+	ReasoningContent string
+}
+
+// StreamGenerateWithReasoning 支持思考过程的流式生成方法
+func (e *EinoLLM) StreamGenerateWithReasoning(ctx context.Context, prompt string) (<-chan StreamResult, error) {
+	logger.Info(fmt.Sprintf("EinoLLM streaming with reasoning for prompt: %s", prompt[:min(50, len(prompt))]))
+
+	messages := []*schema.Message{
+		schema.UserMessage(prompt),
+	}
+
+	streamReader, err := e.chatModel.Stream(ctx, messages)
+	if err != nil {
+		logger.Error(fmt.Sprintf("EinoLLM streaming with reasoning failed: %v", err))
+		return nil, err
+	}
+
+	outputChan := make(chan StreamResult, 100)
+
+	go func() {
+		defer close(outputChan)
+		defer streamReader.Close()
+
+		for {
+			chunk, err := streamReader.Recv()
+			if err != nil {
+				if err.Error() == "EOF" {
+					logger.Info("Stream with reasoning completed")
+					return
+				}
+				logger.Error(fmt.Sprintf("Stream receive error: %v", err))
+				outputChan <- StreamResult{
+					Content: fmt.Sprintf("错误: %v", err),
+				}
+				return
+			}
+
+			// 同时提取内容和思考过程
+			result := StreamResult{}
+			if chunk.Content != "" {
+				result.Content = chunk.Content
+			}
+			if chunk.ReasoningContent != "" {
+				result.ReasoningContent = chunk.ReasoningContent
+				logger.Info(fmt.Sprintf("Received reasoning content: %d chars", len(chunk.ReasoningContent)))
+			}
+
+			// 只在有内容时发送
+			if result.Content != "" || result.ReasoningContent != "" {
+				outputChan <- result
+			}
+		}
+	}()
+
+	return outputChan, nil
+}
+
 func (e *EinoLLM) StreamGenerateWithCallback(ctx context.Context, prompt string, handler callbacks.Handler) (<-chan string, *schema.Message, error) {
 	logger.Info(fmt.Sprintf("EinoLLM streaming with callback for prompt: %s", prompt[:min(50, len(prompt))]))
 

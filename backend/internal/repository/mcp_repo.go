@@ -59,3 +59,9 @@ func (r *MCPRepository) Update(server *model.MCPServer) error {
 func (r *MCPRepository) Delete(id string) error {
 	return r.db.Where("id = ?", id).Delete(&model.MCPServer{}).Error
 }
+
+func (r *MCPRepository) GetByIDs(ids []string) ([]model.MCPServer, error) {
+	var servers []model.MCPServer
+	err := r.db.Where("id IN ?", ids).Find(&servers).Error
+	return servers, err
+}

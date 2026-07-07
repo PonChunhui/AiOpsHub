@@ -15,6 +15,7 @@ import (
 	"github.com/aiops/AiOpsHub/backend/internal/handler"
 	"github.com/aiops/AiOpsHub/backend/internal/middleware"
 	"github.com/aiops/AiOpsHub/backend/internal/model"
+	"github.com/aiops/AiOpsHub/backend/internal/service"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	redisutil "github.com/aiops/AiOpsHub/backend/pkg/redis"
 	"github.com/gin-gonic/gin"
@@ -56,10 +57,28 @@ func main() {
 	if err := database.DB.AutoMigrate(&model.ChatMessage{}); err != nil {
 		log.Printf("Warning: Failed to migrate chat_messages table: %v", err)
 	}
+	if err := database.DB.AutoMigrate(&model.HostGroup{}); err != nil {
+		log.Printf("Warning: Failed to migrate host_groups table: %v", err)
+	}
+	if err := database.DB.AutoMigrate(&model.Host{}); err != nil {
+		log.Printf("Warning: Failed to migrate hosts table: %v", err)
+	}
+	if err := database.DB.AutoMigrate(&model.SSHSessionLog{}); err != nil {
+		log.Printf("Warning: Failed to migrate ssh_session_logs table: %v", err)
+	}
 
 	handler.InitWebSocketHandler()
 	handler.InitServices()
 	handler.InitChatHandler()
+	handler.InitHostHandler()
+
+	// 创建默认主机分组（如果不存在）
+	hostService := service.NewHostService()
+	groups, _ := hostService.GetGroupTree()
+	if len(groups) == 0 {
+		hostService.CreateGroup("默认分组", "", "系统默认分组", "system")
+		logger.Info("Created default host group")
+	}
 
 	if viper.GetString("app.mode") == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -129,6 +148,8 @@ func registerRoutes(r *gin.Engine) {
 			c.JSON(500, gin.H{"error": "WebSocket handler not initialized"})
 		}
 	})
+
+	r.GET("/ws/ssh/:host_id", handler.HandleSSHWebSocket)
 
 	v1 := r.Group("/api/v1")
 	{
@@ -225,6 +246,30 @@ func registerRoutes(r *gin.Engine) {
 			users.DELETE("/:id", handler.DeleteUser)
 		}
 
+		hostGroups := v1.Group("/host-groups")
+		hostGroups.Use(middleware.Auth())
+		{
+			hostGroups.GET("", handler.GetGroupTree)
+			hostGroups.GET("/:id", handler.GetGroupByID)
+			hostGroups.POST("", handler.CreateGroup)
+			hostGroups.PUT("/:id", handler.UpdateGroup)
+			hostGroups.DELETE("/:id", handler.DeleteGroup)
+			hostGroups.GET("/:id/check-cascade", handler.CheckGroupCascade)
+		}
+
+		hosts := v1.Group("/hosts")
+		hosts.Use(middleware.Auth())
+		{
+			hosts.GET("", handler.ListHosts)
+			hosts.GET("/:id", handler.GetHostByID)
+			hosts.POST("", handler.CreateHost)
+			hosts.PUT("/:id", handler.UpdateHost)
+			hosts.DELETE("/:id", handler.DeleteHost)
+			hosts.POST("/batch-import", handler.BatchImportHosts)
+			hosts.POST("/batch-delete", handler.BatchDeleteHosts)
+			hosts.POST("/:id/test-connection", handler.TestHostConnection)
+		}
+
 		chat := v1.Group("/chat")
 		chat.Use(middleware.Auth())
 		{
@@ -266,6 +311,13 @@ func registerRoutes(r *gin.Engine) {
 			chat.POST("/messages/stream", func(c *gin.Context) {
 				if handler.GlobalChatHandler != nil {
 					handler.GlobalChatHandler.SendMessageStream(c)
+				} else {
+					c.JSON(500, gin.H{"error": "Chat handler not initialized"})
+				}
+			})
+			chat.POST("/messages/stream/events", func(c *gin.Context) {
+				if handler.GlobalChatHandler != nil {
+					handler.GlobalChatHandler.SendMessageStreamWithEvents(c)
 				} else {
 					c.JSON(500, gin.H{"error": "Chat handler not initialized"})
 				}
