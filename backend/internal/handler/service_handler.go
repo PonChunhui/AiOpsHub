@@ -10,6 +10,7 @@ import (
 	"github.com/aiops/AiOpsHub/backend/internal/database"
 	"github.com/aiops/AiOpsHub/backend/internal/repository"
 	"github.com/aiops/AiOpsHub/backend/internal/service"
+	"github.com/aiops/AiOpsHub/backend/pkg/llm"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,9 @@ var (
 	embeddingService *service.EmbeddingService
 	agentService     *service.AgentService
 	toolService      *service.ToolService
+
+	agentRuntime *service.AgentRuntime
+	masterRouter *service.MasterRouter
 )
 
 func InitServices() {
@@ -34,6 +38,11 @@ func InitServices() {
 	if err := agentService.InitializePresets(); err != nil {
 		fmt.Printf("Failed to initialize preset agents: %v\n", err)
 	}
+
+	initAgentRuntime()
+	initMasterRouter()
+
+	fmt.Println("✅ All Services initialized successfully (New Architecture)")
 }
 
 func initTokenService() {
@@ -359,4 +368,61 @@ func EstimateCost(c *gin.Context) {
 		"estimated_tokens": req.EstimatedTokens,
 		"estimated_cost":   cost,
 	})
+}
+
+func initAgentRuntime() {
+	llmConfig := llm.EinoLLMConfig{
+		Model:       viper.GetString("llm.model"),
+		Temperature: viper.GetFloat64("llm.temperature"),
+		MaxTokens:   viper.GetInt("llm.max_tokens"),
+		Provider:    viper.GetString("llm.provider"),
+		APIKey:      viper.GetString("llm.api_key"),
+		BaseURL:     viper.GetString("llm.base_url"),
+	}
+
+	einoLLM, err := llm.NewEinoLLM(llmConfig)
+	if err != nil {
+		fmt.Printf("Failed to create LLM for AgentRuntime: %v\n", err)
+		return
+	}
+
+	cacheSize := viper.GetInt("agent.cache_size")
+	if cacheSize <= 0 {
+		cacheSize = 100
+	}
+
+	agentRuntime = service.NewAgentRuntime(agentService, toolService, mcpService, einoLLM, cacheSize)
+	fmt.Printf("✅ Agent Runtime initialized (cache size: %d)\n", cacheSize)
+}
+
+func initMasterRouter() {
+	llmConfig := llm.EinoLLMConfig{
+		Model:       viper.GetString("llm.model"),
+		Temperature: 0.3,
+		MaxTokens:   500,
+		Provider:    viper.GetString("llm.provider"),
+		APIKey:      viper.GetString("llm.api_key"),
+		BaseURL:     viper.GetString("llm.base_url"),
+	}
+
+	routerLLM, err := llm.NewEinoLLM(llmConfig)
+	if err != nil {
+		fmt.Printf("Failed to create LLM for MasterRouter: %v\n", err)
+		return
+	}
+
+	masterRouter = service.NewMasterRouter(agentService, agentRuntime, routerLLM)
+	fmt.Println("✅ Master Router initialized")
+}
+
+func GetAgentRuntime() *service.AgentRuntime {
+	return agentRuntime
+}
+
+func GetMasterRouter() *service.MasterRouter {
+	return masterRouter
+}
+
+func GetTokenService() *service.TokenService {
+	return tokenService
 }

@@ -217,3 +217,25 @@ func (s *ToolService) InitializePresetTools() error {
 	s.LogInfo("预设工具初始化完成")
 	return nil
 }
+
+func (s *ToolService) GetAgentToolPool(agentID string) ([]model.Tool, error) {
+	bindings, err := s.repo.GetAgentTools(agentID)
+	if err != nil {
+		return nil, s.HandleError(err, "获取Agent工具池失败")
+	}
+
+	tools := []model.Tool{}
+	for _, binding := range bindings {
+		tool, err := s.repo.GetByID(binding.ToolID)
+		if err != nil {
+			s.LogError("获取工具 %s 失败: %v", binding.ToolID, err)
+			continue
+		}
+
+		if tool.Enabled && binding.Enabled {
+			tools = append(tools, *tool)
+		}
+	}
+
+	return tools, nil
+}

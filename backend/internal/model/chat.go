@@ -28,6 +28,7 @@ type ChatMessage struct {
 	ToolCalls     string    `json:"tool_calls" gorm:"type:text"`                       // 工具调用的JSON数据
 	Tokens        int       `json:"tokens" gorm:"default:0"`                           // Token数量
 	RAGReferences string    `json:"rag_references" gorm:"type:text"`                   // RAG引用的JSON数据
+	AgentID       string    `json:"agent_id" gorm:"type:varchar(100);index"`           // 使用的AgentID
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime;index"`            // 创建时间
 }
 

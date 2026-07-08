@@ -91,3 +91,12 @@ func (r *ToolRepository) UpdateAgentToolBinding(binding *model.AgentTool) error 
 func (r *ToolRepository) SaveSSHAuditLog(log *model.SSHAuditLog) error {
 	return r.db.Create(log).Error
 }
+
+func (r *ToolRepository) GetAgentToolBinding(agentID, toolID string) (*model.AgentTool, error) {
+	var binding model.AgentTool
+	err := r.db.Where("agent_id = ? AND tool_id = ?", agentID, toolID).First(&binding).Error
+	if err != nil {
+		return nil, err
+	}
+	return &binding, nil
+}

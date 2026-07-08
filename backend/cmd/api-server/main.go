@@ -66,6 +66,12 @@ func main() {
 	if err := database.DB.AutoMigrate(&model.SSHSessionLog{}); err != nil {
 		log.Printf("Warning: Failed to migrate ssh_session_logs table: %v", err)
 	}
+	if err := database.DB.AutoMigrate(&model.RoutingLog{}); err != nil {
+		log.Printf("Warning: Failed to migrate routing_logs table: %v", err)
+	}
+	if err := database.DB.AutoMigrate(&model.ToolCallLog{}); err != nil {
+		log.Printf("Warning: Failed to migrate tool_call_logs table: %v", err)
+	}
 
 	handler.InitWebSocketHandler()
 	handler.InitServices()

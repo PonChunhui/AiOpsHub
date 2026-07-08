@@ -7,21 +7,26 @@ import (
 )
 
 type Agent struct {
-	ID           string    `json:"id" gorm:"primaryKey"`
-	Name         string    `json:"name" gorm:"not null;type:varchar(100)"`
-	Type         string    `json:"type" gorm:"type:varchar(50);default:'preset'"` // Legacy field, will be deprecated
-	Avatar       string    `json:"avatar" gorm:"type:varchar(10)"`                // Emoji 头像
-	Role         string    `json:"role" gorm:"type:varchar(200)"`                 // 角色描述
-	Category     string    `json:"category" gorm:"type:varchar(100)"`             // 分类
-	Description  string    `json:"description" gorm:"type:text"`                  // 功能描述
-	SystemPrompt string    `json:"system_prompt" gorm:"type:text"`                // 系统提示词
-	Model        string    `json:"model" gorm:"type:varchar(50)"`                 // 绑定的 LLM 模型
-	Temperature  float64   `json:"temperature" gorm:"type:decimal(3,2)"`          // 温度参数
-	IsPreset     bool      `json:"is_preset" gorm:"default:false"`                // 是否预设
-	Enabled      bool      `json:"enabled" gorm:"default:true"`                   // 是否启用
-	MCPServerIDs string    `json:"mcp_server_ids" gorm:"type:text"`               // MCP Server ID列表(JSON数组格式)
-	CreatedAt    time.Time `json:"created_at" gorm:"index"`
-	UpdatedAt    time.Time `json:"updated_at" gorm:"index"`
+	ID           string  `json:"id" gorm:"primaryKey"`
+	Name         string  `json:"name" gorm:"not null;type:varchar(100)"`
+	Type         string  `json:"type" gorm:"type:varchar(50);default:'preset'"` // Legacy field, will be deprecated
+	Avatar       string  `json:"avatar" gorm:"type:varchar(10)"`                // Emoji 头像
+	Role         string  `json:"role" gorm:"type:varchar(200)"`                 // 角色描述
+	Category     string  `json:"category" gorm:"type:varchar(100)"`             // 分类
+	Description  string  `json:"description" gorm:"type:text"`                  // 功能描述
+	SystemPrompt string  `json:"system_prompt" gorm:"type:text"`                // 系统提示词
+	Model        string  `json:"model" gorm:"type:varchar(50)"`                 // 绑定的 LLM 模型
+	Temperature  float64 `json:"temperature" gorm:"type:decimal(3,2)"`          // 温度参数
+	IsPreset     bool    `json:"is_preset" gorm:"default:false"`                // 是否预设
+	Enabled      bool    `json:"enabled" gorm:"default:true"`                   // 是否启用
+	MCPServerIDs string  `json:"mcp_server_ids" gorm:"type:text"`               // MCP Server ID列表(JSON数组格式)
+
+	MaxToolCalls int    `json:"max_tool_calls" gorm:"default:5"` // 最大工具调用次数
+	Capability   string `json:"capability" gorm:"type:text"`     // 能力标签JSON
+	Priority     int    `json:"priority" gorm:"default:0"`       // 路由优先级
+
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"index"`
 }
 
 type Alert struct {
@@ -141,5 +146,30 @@ type TokenUsageRecord struct {
 	OutputTokens int       `json:"output_tokens"`
 	TotalTokens  int       `json:"total_tokens"`
 	Cost         float64   `json:"cost"`
+	CreatedAt    time.Time `json:"created_at" gorm:"index"`
+}
+
+type RoutingLog struct {
+	ID                string    `json:"id" gorm:"primaryKey"`
+	SessionID         string    `json:"session_id" gorm:"type:varchar(100);index"`
+	UserMessage       string    `json:"user_message" gorm:"type:text"`
+	SelectedAgentID   string    `json:"selected_agent_id" gorm:"type:varchar(100);index"`
+	Confidence        float64   `json:"confidence" gorm:"type:decimal(3,2)"`
+	Reasoning         string    `json:"reasoning" gorm:"type:text"`
+	AlternativeAgents string    `json:"alternative_agents" gorm:"type:text"`    // JSON array
+	RoutingMethod     string    `json:"routing_method" gorm:"type:varchar(20)"` // llm/rule/fallback/quick_match
+	CreatedAt         time.Time `json:"created_at" gorm:"index"`
+}
+
+type ToolCallLog struct {
+	ID           string    `json:"id" gorm:"primaryKey"`
+	SessionID    string    `json:"session_id" gorm:"type:varchar(100);index"`
+	AgentID      string    `json:"agent_id" gorm:"type:varchar(100);index"`
+	ToolName     string    `json:"tool_name" gorm:"type:varchar(100);index"`
+	Arguments    string    `json:"arguments" gorm:"type:text"` // JSON
+	Result       string    `json:"result" gorm:"type:text"`
+	Success      bool      `json:"success"`
+	Duration     int       `json:"duration"` // 毫秒
+	ErrorMessage string    `json:"error_message" gorm:"type:text"`
 	CreatedAt    time.Time `json:"created_at" gorm:"index"`
 }

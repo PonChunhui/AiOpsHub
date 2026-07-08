@@ -7,7 +7,6 @@ import (
 
 	"github.com/aiops/AiOpsHub/backend/internal/model"
 	"github.com/aiops/AiOpsHub/backend/internal/service"
-	"github.com/aiops/AiOpsHub/backend/pkg/llm"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -20,27 +19,8 @@ type ChatHandler struct {
 }
 
 // NewChatHandler 创建对话处理器实例
-func NewChatHandler(ragSvc *service.RAGService, mcpSvc *service.MCPService, agentSvc *service.AgentService, tokenSvc *service.TokenService) (*ChatHandler, error) {
-	llmConfig := llm.EinoLLMConfig{
-		Model:       viper.GetString("llm.model"),
-		Temperature: viper.GetFloat64("llm.temperature"),
-		MaxTokens:   viper.GetInt("llm.max_tokens"),
-		Provider:    viper.GetString("llm.provider"),
-		APIKey:      viper.GetString("llm.api_key"),
-		BaseURL:     viper.GetString("llm.base_url"),
-	}
-
+func NewChatHandler(ragSvc *service.RAGService) (*ChatHandler, error) {
 	enableRAG := viper.GetBool("llm.enable_rag")
-
-	if llmConfig.Model == "" {
-		llmConfig.Model = "gpt-3.5-turbo"
-	}
-	if llmConfig.Provider == "" {
-		llmConfig.Provider = "openai"
-	}
-	if llmConfig.Temperature == 0 {
-		llmConfig.Temperature = 0.7
-	}
 
 	var ragServiceToUse *service.RAGService
 	if enableRAG && ragSvc != nil {
@@ -51,7 +31,12 @@ func NewChatHandler(ragSvc *service.RAGService, mcpSvc *service.MCPService, agen
 		logger.Info("ChatHandler未启用RAG功能")
 	}
 
-	chatService, err := service.NewChatService(llmConfig, ragServiceToUse, mcpSvc, agentSvc, tokenSvc)
+	chatService, err := service.NewChatService(
+		masterRouter,
+		agentRuntime,
+		ragServiceToUse,
+		tokenService,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -394,11 +379,11 @@ var GlobalChatHandler *ChatHandler
 
 // InitChatHandler 初始化对话处理器
 func InitChatHandler() {
-	handler, err := NewChatHandler(ragService, mcpService, agentService, tokenService)
+	handler, err := NewChatHandler(ragService)
 	if err != nil {
 		logger.Error("初始化ChatHandler失败: " + err.Error())
 		return
 	}
 	GlobalChatHandler = handler
-	logger.Info("ChatHandler初始化成功(已启用RAG、MCP和Token统计功能)")
+	logger.Info("✅ ChatHandler初始化成功(New Architecture)")
 }

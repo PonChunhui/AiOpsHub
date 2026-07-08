@@ -37,6 +37,9 @@ const renderedContent = computed(() => {
   line-height: 1.6;
   color: #303133;
   font-size: 14px;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ========== 代码块样式优化（协调版本） ========== */
@@ -48,6 +51,7 @@ const renderedContent = computed(() => {
   border: 1px solid #e1e4e8;
   overflow: hidden;
   transition: all 0.2s ease;
+  max-width: 100%;
 }
 
 .markdown-content :deep(.code-block-wrapper:hover) {
@@ -151,7 +155,9 @@ const renderedContent = computed(() => {
   background: #ffffff;
   scrollbar-width: thin;
   scrollbar-color: #d1d5da transparent;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .markdown-content :deep(pre::-webkit-scrollbar) {
@@ -177,12 +183,13 @@ const renderedContent = computed(() => {
   color: #24292e;
   line-height: 1.7;
   display: inline;
-  white-space: pre;
+  white-space: pre-wrap;
   word-spacing: normal;
-  word-break: normal;
+  word-break: break-word;
   padding: 0;
   background: transparent;
   border-radius: 0;
+  max-width: 100%;
 }
 
 /* ========== 其他Markdown元素样式 ========== */
@@ -219,6 +226,9 @@ const renderedContent = computed(() => {
   margin: 14px 0;
   line-height: 1.7;
   color: #24292e;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 /* 列表 */
@@ -251,6 +261,9 @@ const renderedContent = computed(() => {
   border-bottom: 1px solid rgba(3, 102, 214, 0.2);
   transition: all 0.15s ease;
   padding-bottom: 1px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .markdown-content :deep(a:hover) {
@@ -292,6 +305,9 @@ const renderedContent = computed(() => {
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid #e1e4e8;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .markdown-content :deep(th),
@@ -299,6 +315,7 @@ const renderedContent = computed(() => {
   border: 1px solid #e1e4e8;
   padding: 10px 14px;
   text-align: left;
+  word-break: break-word;
 }
 
 .markdown-content :deep(th) {
@@ -326,6 +343,8 @@ const renderedContent = computed(() => {
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
   border: 1px solid rgba(27, 31, 35, 0.1);
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* 分隔线 */

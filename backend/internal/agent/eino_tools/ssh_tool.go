@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aiops/AiOpsHub/backend/internal/model"
@@ -105,7 +107,69 @@ func (t *SSHTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts
 				commandAllowed = true
 				break
 			}
-			if args.Command == cmdPattern {
+
+			// 分离命令和参数
+			cmdParts := strings.Fields(args.Command)
+			if len(cmdParts) == 0 {
+				continue
+			}
+			actualCmd := cmdParts[0]
+
+			patternParts := strings.Fields(cmdPattern)
+			if len(patternParts) == 0 {
+				continue
+			}
+			patternCmd := patternParts[0]
+
+			// 匹配基础命令
+			if patternCmd == actualCmd {
+				// 如果配置只有命令（如"ls"），匹配所有ls命令及其参数
+				if len(patternParts) == 1 {
+					commandAllowed = true
+					break
+				}
+
+				// 如果配置有命令+参数（如"cat /var/log/*"），需要匹配参数
+				if len(cmdParts) >= 2 && len(patternParts) >= 2 {
+					pathPattern := strings.Join(patternParts[1:], " ")
+					actualPath := strings.Join(cmdParts[1:], " ")
+
+					// 1. 精确匹配参数
+					matched, err := filepath.Match(pathPattern, actualPath)
+					if err == nil && matched {
+						commandAllowed = true
+						break
+					}
+
+					// 2. 前缀匹配（如/var/log/*匹配/var/log/messages）
+					if strings.HasSuffix(pathPattern, "*") {
+						prefix := strings.TrimSuffix(pathPattern, "*")
+						if strings.HasPrefix(actualPath, prefix) {
+							commandAllowed = true
+							break
+						}
+					}
+
+					// 3. 中间通配符匹配（如/tmp/*/file）
+					if strings.Contains(pathPattern, "*") {
+						parts := strings.Split(pathPattern, "*")
+						if len(parts) >= 1 && strings.HasPrefix(actualPath, parts[0]) {
+							commandAllowed = true
+							break
+						}
+					}
+				}
+
+				// 如果命令匹配但没有参数，也允许（如配置ls /tmp，执行ls也允许）
+				if len(patternParts) == 1 {
+					commandAllowed = true
+					break
+				}
+			}
+
+			// 尝试整个命令字符串的通配符匹配
+			matched, err := filepath.Match(cmdPattern, args.Command)
+			if err == nil && matched {
 				commandAllowed = true
 				break
 			}

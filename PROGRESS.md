@@ -611,7 +611,42 @@ Kubernetes:       6个端点
 
 ## 下一步建议
 
-### 生产部署准备
+### 立即行动（本周）
+
+1. **安全加固（最高优先级）**
+   ```bash
+   # 1. 创建配置文件模板
+   cp backend/configs/config.yaml backend/configs/config.yaml.example
+   
+   # 2. 添加真实配置到.gitignore
+   echo "backend/configs/config.yaml" >> .gitignore
+   
+   # 3. 使用环境变量管理敏感信息
+   export DATABASE_PASSWORD="your_password"
+   export LLM_API_KEY="your_api_key"
+   export JWT_SECRET_KEY="your_strong_secret"
+   
+   # 4. 修复Docker配置
+   vim deployments/docker-compose.yml
+   # 使用环境变量替换硬编码密码
+   ```
+
+2. **建立CI/CD流程**
+   ```bash
+   # 创建GitHub Actions配置
+   mkdir -p .github/workflows
+   vim .github/workflows/ci.yml
+   ```
+
+3. **补充关键测试**
+   ```bash
+   # 优先为Handler和Service添加单元测试
+   cd backend
+   go test ./internal/handler -v
+   go test ./internal/service -v
+   ```
+
+### 生产部署准备（更新）
 1. **启动完整系统**
    ```bash
    ./scripts/system.sh start
@@ -642,7 +677,33 @@ Kubernetes:       6个端点
 3. **API文档** - 使用Swagger生成API文档
 4. **视频教程** - 制作快速入门视频
 
+1. **安全配置（新增）**
+   - 使用环境变量管理敏感信息
+   - JWT密钥轮换机制
+   - CORS限制具体域名
+   - API Rate Limiting
+   - HttpOnly Cookie存储Token
+
+2. **性能优化（新增）**
+   - 数据库索引优化
+   - Redis缓存策略
+   - 游标分页实现
+   - 并发控制机制
+
+3. **监控增强（新增）**
+   - 性能指标监控（Prometheus）
+   - 缓存命中率监控
+   - API响应时间监控
+   - 错误率监控
+
+4. **文档完善（新增）**
+   - Swagger API文档
+   - 架构设计文档
+   - 部署运维手册
+   - 用户使用手册
+
 ---
 
-**更新时间**: 2026-06-28
-**项目状态**: 开发完成，进入部署运行阶段
+**更新时间**: 2026-07-07
+**项目状态**: 开发完成，进入优化和生产部署阶段
+**下一步**: 立即执行安全加固（P0优先级）
