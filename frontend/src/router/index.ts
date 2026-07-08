@@ -68,7 +68,7 @@ const router = createRouter({
     {
       path: '/ai-assistant',
       name: 'ai-assistant',
-      component: () => import('@/views/AIAssistant-TinyRobot.vue'),
+      component: () => import('@/views/AIAssistant.vue'),
       meta: { requiresAuth: true }
     },
     {

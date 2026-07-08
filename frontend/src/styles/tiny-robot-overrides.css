@@ -123,12 +123,59 @@
   --tr-bubble-reasoning-side-border-width: 2px;
 }
 
+/* 默认折叠推理内容 */
+.tr-bubble-reasoning details {
+  margin: 0;
+}
+
+/* 默认不展开推理内容 */
+.tr-bubble-reasoning details:not([data-force-open]) {
+  /* 默认折叠，除非有 data-force-open 属性 */
+}
+
+.tr-bubble-reasoning details[open] summary {
+  border-bottom: 1px solid #e4e7ed;
+}
+
+/* 推理内容摘要样式 */
+.tr-bubble-reasoning summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f0f7ff;
+  border-radius: 4px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.tr-bubble-reasoning summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 推理内容详细部分 */
+.tr-bubble-reasoning details > *:not(summary) {
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 0 0 4px 4px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* 当深度思考启用时，自动展开推理内容 */
+.tr-bubble-reasoning[data-deep-thinking="true"] details {
+  /* 可以通过 JavaScript 设置 data-deep-thinking 属性 */
+}
+
 /* 工具调用样式 */
-.tr-bubble-tool-call {
+/* .tr-bubble-tool-call {
   --tr-bubble-tool-call-bg: #fff3e0;
   --tr-bubble-tool-call-min-width: 200px;
   --tr-bubble-tool-call-max-width: 400px;
-}
+} */
 
 /* 确保Tiny-Robot组件在Element Plus环境中正常显示 */
 .tr-bubble,

@@ -1,38 +1,29 @@
 <template>
   <div class="ai-assistant-tiny-robot">
-    <!-- 左侧会话列表 -->
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <el-button type="primary" @click="createNewSession" :icon="Plus" size="small">
-          新对话
-        </el-button>
-      </div>
-      
-      <div class="sessions-list">
-        <div
-          v-for="session in sessions"
-          :key="session.id"
-          :class="['session-item', { active: currentSessionId === session.id }]"
-          @click="selectSession(session.id)"
-        >
-          <div class="session-title">{{ session.title }}</div>
-          <el-button
-            text
-            size="small"
-            :icon="Delete"
-            @click.stop="deleteSession(session.id)"
+    <!-- 主聊天区域 -->
+    <div class="main-content">
+      <!-- 顶部工具栏 -->
+      <div class="toolbar">
+        <div class="toolbar-actions">
+          <tr-icon-button
+            :icon="IconHistory"
+            size="28"
+            svgSize="20"
+            title="历史会话"
+            @click="historyDrawerOpen = true"
+          />
+          <tr-icon-button
+            :icon="IconNewSession"
+            size="28"
+            svgSize="20"
+            title="新对话"
+            @click="createNewSession"
           />
         </div>
-      </div>
-    </div>
-    
-    <!-- 右侧主聊天区域 -->
-    <div class="main-content">
-      <div class="chat-header">
-        <h3>{{ currentSession?.title || '新对话' }}</h3>
+        <h3 class="toolbar-title">{{ currentSession?.title || '新对话' }}</h3>
       </div>
       
-      <!-- 消息列表（使用useMessage提供的messages） -->
+      <!-- 消息列表 -->
       <div class="messages-container" ref="messagesContainerRef">
         <!-- 欢迎界面 -->
         <div v-if="messages.length === 0 && !isProcessing" class="welcome-container">
@@ -115,14 +106,58 @@
         </tr-sender>
       </div>
     </div>
+
+    <!-- 历史会话抽屉 -->
+    <Transition name="drawer">
+      <div
+        v-if="historyDrawerOpen"
+        class="drawer-root"
+        role="dialog"
+        aria-modal="true"
+        aria-label="历史对话"
+      >
+        <div class="drawer-backdrop" @click="historyDrawerOpen = false" />
+        <aside class="drawer-panel" @click.stop>
+          <div class="drawer-header">
+            <span class="drawer-title">历史对话</span>
+            <div class="drawer-actions">
+              <tr-icon-button
+                :icon="IconNewSession"
+                size="28"
+                svgSize="20"
+                title="新对话"
+                @click="createNewSessionAndCloseDrawer"
+              />
+              <tr-icon-button
+                :icon="IconClose"
+                size="28"
+                svgSize="20"
+                title="关闭"
+                @click="historyDrawerOpen = false"
+              />
+            </div>
+          </div>
+          <tr-history
+            class="drawer-history"
+            :data="historyData"
+            :selected="currentSessionId"
+            :menu-items="historyMenuItems"
+            :search-bar="true"
+            @item-click="handleHistoryItemClick"
+            @item-action="handleHistoryItemAction"
+          />
+        </aside>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
-import { Plus, Delete, Loading, User, ChatDotRound, Cpu } from '@element-plus/icons-vue'
-import { ElMessage, ElIcon } from 'element-plus'
-import { TrBubbleList, TrBubbleProvider, TrSender } from '@opentiny/tiny-robot'
+import { ref, computed, onMounted, h, watch } from 'vue'
+import { Plus, Delete, Loading, Cpu } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { TrBubbleList, TrBubbleProvider, TrSender, TrHistory, TrIconButton } from '@opentiny/tiny-robot'
+import { IconHistory, IconNewSession, IconClose, IconAi, IconUser } from '@opentiny/tiny-robot-svgs'
 import { useMessage, sseStreamToGenerator } from '@opentiny/tiny-robot-kit'
 import AgentVisualization from '@/components/tiny-robot/AgentVisualization.vue'
 import CustomMarkdownRenderer from '@/components/tiny-robot/CustomMarkdownRenderer.vue'
@@ -140,6 +175,18 @@ const inputMessage = ref<string>('')
 const messagesContainerRef = ref<HTMLElement | null>(null)
 const bubbleListRef = ref<any>(null)
 const deepThinkingEnabled = ref<boolean>(false)
+const historyDrawerOpen = ref<boolean>(false)
+
+const historyData = computed(() => {
+  return sessions.value.map(session => ({
+    id: session.id,
+    title: session.title
+  }))
+})
+
+const historyMenuItems = [
+  { id: 'delete', text: '删除', icon: Delete }
+]
 
 const currentSession = computed(() => {
   return sessions.value.find(s => s.id === currentSessionId.value)
@@ -169,16 +216,19 @@ const extensions = [
   })
 ]
 
+const aiAvatar = h(IconAi, { style: { fontSize: '32px' } })
+const userAvatar = h(IconUser, { style: { fontSize: '32px' } })
+
 const roleConfigs = {
   user: {
     placement: 'end' as const,
     shape: 'corner' as const,
-    avatar: () => h(ElIcon, { size: 32, color: '#409EFF' }, () => h(User))
+    avatar: userAvatar
   },
   assistant: {
     placement: 'start' as const,
     shape: 'corner' as const,
-    avatar: () => h(ElIcon, { size: 32, color: '#67C23A' }, () => h(ChatDotRound))
+    avatar: aiAvatar
   },
   tool: {
     placement: 'start' as const,
@@ -187,7 +237,6 @@ const roleConfigs = {
   }
 }
 
-// 使用tiny-robot-kit的useMessage管理消息和流式响应
 const {
   messages,
   requestState,
@@ -259,6 +308,18 @@ const handleCancel = async () => {
   await abortRequest()
 }
 
+// 监听深度思考状态，控制推理内容的展开
+watch([messages, deepThinkingEnabled], ([newMessages, newDeepThinking]) => {
+  // 更新所有 assistant 消息的 state.open 属性
+  if (newMessages && Array.isArray(newMessages)) {
+    newMessages.forEach(msg => {
+      if (msg.role === 'assistant' && msg.state) {
+        msg.state.open = newDeepThinking
+      }
+    })
+  }
+}, { immediate: true, deep: true })
+
 const handleQuickAction = async (text: string) => {
   inputMessage.value = text
   await handleSendMessage()
@@ -270,11 +331,26 @@ const createNewSession = async () => {
     if (response && response.data) {
       sessions.value.unshift(response.data)
       currentSessionId.value = response.data.id
-      // 清空当前消息列表
       messages.value = []
     }
   } catch (error) {
     ElMessage.error('创建会话失败')
+  }
+}
+
+const createNewSessionAndCloseDrawer = async () => {
+  await createNewSession()
+  historyDrawerOpen.value = false
+}
+
+const handleHistoryItemClick = async (item: any) => {
+  await selectSession(item.id)
+  historyDrawerOpen.value = false
+}
+
+const handleHistoryItemAction = async (action: any, item: any) => {
+  if (action.id === 'delete') {
+    await deleteSession(item.id)
   }
 }
 
@@ -298,7 +374,8 @@ const selectSession = async (sessionId: string) => {
           agentVisualization: {
             agentPath: [],
             events: []
-          }
+          },
+          open: false // 默认折叠推理内容
         } : {}
       }))
       
@@ -351,53 +428,8 @@ onMounted(() => {
 .ai-assistant-tiny-robot {
   display: flex;
   height: calc(100vh - 60px);
-  background: #f5f7fa;
-}
-
-.sidebar {
-  width: 260px;
   background: #fff;
-  border-right: 1px solid #e4e7ed;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-header {
-  padding: 16px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.sessions-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.session-item {
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.session-item:hover {
-  background: #ecf5ff;
-}
-
-.session-item.active {
-  background: #409eff;
-  color: #fff;
-}
-
-.session-title {
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  position: relative;
 }
 
 .main-content {
@@ -407,9 +439,24 @@ onMounted(() => {
   background: #fff;
 }
 
-.chat-header {
-  padding: 16px 24px;
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
   border-bottom: 1px solid #e4e7ed;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .messages-container {
@@ -476,5 +523,77 @@ onMounted(() => {
   width: 100%;
   height: 60px;
   font-size: 16px;
+}
+
+/* Drawer transition */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: none;
+}
+
+.drawer-enter-active .drawer-backdrop,
+.drawer-leave-active .drawer-backdrop {
+  transition: opacity 0.28s ease;
+}
+
+.drawer-enter-from .drawer-backdrop,
+.drawer-leave-to .drawer-backdrop {
+  opacity: 0;
+}
+
+.drawer-root {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drawer-root > * {
+  pointer-events: auto;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.drawer-panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  background: #fff;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  border-right: 1px solid #e4e7ed;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 8px;
+}
+
+.drawer-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.drawer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.drawer-history {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 </style>
