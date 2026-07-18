@@ -1,113 +1,34 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import Home from '@/views/Home.vue'
+import type { RouteRecordRaw } from 'vue-router'
+
+import authRoutes from './modules/auth'
+import homeRoutes from './modules/home'
+import agentRoutes from './modules/agents'
+import alertRoutes from './modules/alerts'
+import knowledgeRoutes from './modules/knowledge'
+import userRoutes from './modules/users'
+import aiAssistantRoutes from './modules/ai-assistant'
+import mcpRoutes from './modules/mcp'
+import toolRoutes from './modules/tools'
+import hostRoutes from './modules/host'
+
+const routes: RouteRecordRaw[] = [
+  ...authRoutes,
+  ...homeRoutes,
+  ...agentRoutes,
+  ...alertRoutes,
+  ...knowledgeRoutes,
+  ...userRoutes,
+  ...aiAssistantRoutes,
+  ...mcpRoutes,
+  ...toolRoutes,
+  ...hostRoutes
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/Login.vue'),
-      meta: { requiresAuth: false }
-    },
-    {
-      path: '/register',
-      name: 'register',
-      component: () => import('@/views/Register.vue'),
-      meta: { requiresAuth: false }
-    },
-    {
-      path: '/',
-      name: 'home',
-      component: Home,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/agents',
-      name: 'agents',
-      component: () => import('@/views/Agents.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/agents-manage',
-      name: 'agents-manage',
-      component: () => import('@/views/AgentsManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/alerts',
-      name: 'alerts',
-      component: () => import('@/views/Alerts.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/alerts-manage',
-      name: 'alerts-manage',
-      component: () => import('@/views/AlertsManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/knowledge-base',
-      name: 'knowledge-base',
-      component: () => import('@/views/KnowledgeBase.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/knowledge-base/edit/:id?',
-      name: 'knowledge-base-edit',
-      component: () => import('@/views/DocumentEditor.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users-manage',
-      name: 'users-manage',
-      component: () => import('@/views/UserManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/ai-assistant',
-      name: 'ai-assistant',
-      component: () => import('@/views/AIAssistant.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/mcp-manage',
-      name: 'mcp-manage',
-      component: () => import('@/views/MCPManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/tools-manage',
-      name: 'tools-manage',
-      component: () => import('@/views/ToolManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/host-manage',
-      name: 'host-manage',
-      component: () => import('@/views/HostManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/host-terminal/:id',
-      name: 'host-terminal',
-      component: () => import('@/views/Terminal.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/host-file-manage',
-      name: 'host-file-manage',
-      component: () => import('@/views/FileManage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/host-file-manage/:id',
-      name: 'host-file-manage-host',
-      component: () => import('@/views/FileManage.vue'),
-      meta: { requiresAuth: true }
-    }
-  ]
+  routes
 })
 
 // 路由守卫 - 检查登录状态

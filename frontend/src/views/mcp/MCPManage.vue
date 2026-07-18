@@ -223,7 +223,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Connection, Loading, SuccessFilled, CircleCloseFilled, WarningFilled, Operation } from '@element-plus/icons-vue'
-import { mcpApi } from '../api'
+import { mcpApi } from '../../api'
 
 const servers = ref<any[]>([])
 const loading = ref(false)

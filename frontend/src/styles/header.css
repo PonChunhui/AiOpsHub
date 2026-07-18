@@ -1,89 +1,154 @@
-/* 头部样式 */
+/* 头部样式 — Clean minimal header */
 
 .header-container {
-  background: white;
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 60px;
-  box-shadow: var(--shadow-sm);
+  padding: 0 var(--spacing-lg);
+  height: var(--header-height);
+  box-shadow: var(--shadow-xs);
+  position: relative;
+  z-index: 10;
 }
 
+/* ===== Title ===== */
 .header-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
+  letter-spacing: var(--tracking-tight);
 }
 
 .header-title-icon {
   color: var(--primary-color);
   font-size: 20px;
+  transition: transform var(--transition-base) var(--easing-default);
 }
 
+.header-title:hover .header-title-icon {
+  transform: scale(1.1);
+}
+
+/* ===== Actions ===== */
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
+/* ===== User Badge ===== */
 .header-user {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  gap: var(--spacing-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
   background: var(--bg-secondary);
-  transition: all 0.3s ease;
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-base) var(--easing-default);
+  cursor: default;
 }
 
 .header-user:hover {
-  background: var(--bg-secondary);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-xs);
 }
 
+/* ===== Avatar ===== */
 .header-user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--primary-color);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: var(--font-semibold);
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
 }
 
 .header-user-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
+/* ===== Notification ===== */
 .header-notification {
   position: relative;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg-secondary);
-  transition: all 0.3s ease;
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-base) var(--easing-default);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .header-notification:hover {
-  background: var(--bg-secondary);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-xs);
+}
+
+.header-notification:active {
+  transform: scale(0.96);
 }
 
 .header-notification-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 4px;
+  right: 4px;
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--danger-color);
+  border: 2px solid var(--bg-primary);
+  animation: notificationPulse 2s ease-in-out infinite;
+}
+
+@keyframes notificationPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0);
+  }
+}
+
+/* ===== Logout Button Override ===== */
+.header-container .el-button {
+  transition: all var(--transition-fast) var(--easing-default);
+}
+
+.header-container .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 var(--spacing-md);
+  }
+
+  .header-user-name {
+    display: none;
+  }
+
+  .header-title {
+    font-size: var(--text-base);
+  }
 }
