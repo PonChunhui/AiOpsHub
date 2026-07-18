@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Close, Monitor, Refresh, Platform, Folder } from '@element-plus/icons-vue'
 import { Terminal } from '@xterm/xterm'
@@ -110,6 +111,7 @@ interface TabContext {
 }
 
 // ========== 选项卡状态 ==========
+const route = useRoute()
 const tabs = ref<TabContext[]>([])
 const activeTabId = ref<string>('')
 const terminalRefs = new Map<string, HTMLElement>()
@@ -370,6 +372,37 @@ const handleResize = () => {
 onMounted(async () => {
   await loadHostGroups()
   window.addEventListener('resize', handleResize)
+
+  // 从路由参数读取主机ID，自动创建选项卡并连接
+  const hostId = route.params.id as string
+  if (hostId) {
+    // 在已加载的主机树中查找该主机
+    const allHosts = hostTreeData.value.flatMap(function findHosts(group: any): any[] {
+      const hosts = (group.children || []).filter((c: any) => c.isHost).map((c: any) => c.hostData)
+      const nested = (group.children || []).filter((c: any) => !c.isHost).flatMap(findHosts)
+      return [...hosts, ...nested]
+    })
+    const targetHost = allHosts.find((h: any) => h.id === hostId)
+    if (targetHost) {
+      createTab(targetHost)
+    } else {
+      // 如果主机树中未找到（例如分组尚未加载完全），尝试通过接口获取
+      try {
+        const res = await api.get('/hosts', { params: { pageSize: 1000 } })
+        if (res?.code === 200) {
+          const hosts = res?.data?.hosts || []
+          const host = hosts.find((h: any) => h.id === hostId)
+          if (host) {
+            createTab(host)
+          } else {
+            ElMessage.warning('未找到指定主机')
+          }
+        }
+      } catch {
+        ElMessage.warning('获取主机信息失败')
+      }
+    }
+  }
 })
 
 onBeforeUnmount(() => {

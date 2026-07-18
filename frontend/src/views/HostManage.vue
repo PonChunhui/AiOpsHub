@@ -598,7 +598,7 @@ const testConnection = async (host: any) => {
 }
 
 const openTerminal = (host: any) => {
-  const route = router.resolve(`/host-terminal/${host.id}`)
+  const route = router.resolve({ name: 'host-terminal', params: { id: host.id } })
   window.open(route.href, '_blank')
 }
 
