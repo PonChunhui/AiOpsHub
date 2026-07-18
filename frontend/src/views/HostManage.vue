@@ -111,25 +111,38 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="360" fixed="right">
+            <el-table-column label="操作" width="100" fixed="right">
               <template #default="{ row }">
-                <el-button size="small" type="success" @click="openTerminal(row)">
-                  <el-icon><Monitor /></el-icon>
-                  终端
-                </el-button>
-                <el-button size="small" type="warning" @click="openFileManage(row)">
-                  <el-icon><Folder /></el-icon>
-                  文件
-                </el-button>
-                <el-button size="small" type="info" @click="testConnection(row)">
-                  测试
-                </el-button>
-                <el-button size="small" type="primary" @click="showEditHostDialog(row)">
-                  编辑
-                </el-button>
-                <el-button size="small" type="danger" @click="handleDeleteHost(row)">
-                  删除
-                </el-button>
+                <el-dropdown trigger="click">
+                  <el-button size="small" type="primary">
+                    操作
+                    <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="openTerminal(row)">
+                        <el-icon><Monitor /></el-icon>
+                        终端
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="openFileManage(row)">
+                        <el-icon><Folder /></el-icon>
+                        文件管理
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="testConnection(row)">
+                        <el-icon><Connection /></el-icon>
+                        测试连接
+                      </el-dropdown-item>
+                      <el-dropdown-item divided @click="showEditHostDialog(row)">
+                        <el-icon><Edit /></el-icon>
+                        编辑
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="handleDeleteHost(row)" class="danger-item">
+                        <el-icon><Delete /></el-icon>
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
             </el-table-column>
           </el-table>
@@ -274,7 +287,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Upload, Monitor, Folder } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Upload, Monitor, Folder, ArrowDown, Connection } from '@element-plus/icons-vue'
 import api from '@/api'
 
 const router = useRouter()
@@ -654,6 +667,15 @@ onMounted(() => {
 .tree-node-actions {
   display: flex;
   gap: 4px;
+}
+
+:deep(.danger-item) {
+  color: #f56c6c;
+}
+
+:deep(.danger-item:hover) {
+  color: #f56c6c;
+  background-color: #fef0f0;
 }
 
 </style>
