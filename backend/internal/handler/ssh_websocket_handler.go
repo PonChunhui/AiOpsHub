@@ -31,6 +31,7 @@ type SSHWebSocketSession struct {
 	Conn       *websocket.Conn
 	SSHClient  *ssh.Client
 	SSHSession *ssh.Session
+	StdinPipe  io.WriteCloser
 	StartTime  time.Time
 	IPAddress  string
 	mu         sync.Mutex
@@ -116,7 +117,13 @@ func HandleSSHWebSocket(c *gin.Context) {
 	}
 	session.SSHSession = sshSession
 
-	sshSession.Stdin = session
+	stdinPipe, err := sshSession.StdinPipe()
+	if err != nil {
+		session.SendMessage("error", "创建输入管道失败: "+err.Error())
+		return
+	}
+	session.StdinPipe = stdinPipe
+
 	sshSession.Stdout = session
 	sshSession.Stderr = session
 
@@ -149,6 +156,9 @@ func (s *SSHWebSocketSession) Close() {
 
 	s.cancel()
 
+	if s.StdinPipe != nil {
+		s.StdinPipe.Close()
+	}
 	if s.SSHSession != nil {
 		s.SSHSession.Close()
 	}
@@ -203,10 +213,8 @@ func (s *SSHWebSocketSession) ReadFromWebSocket() {
 				case "data":
 					if data, ok := msg["data"].(string); ok {
 						s.mu.Lock()
-						if s.SSHSession != nil && s.SSHSession.Stdin != nil {
-							if stdinWriter, ok := s.SSHSession.Stdin.(io.Writer); ok {
-								io.WriteString(stdinWriter, data)
-							}
+						if s.StdinPipe != nil {
+							io.WriteString(s.StdinPipe, data)
 						}
 						s.mu.Unlock()
 					}
@@ -214,10 +222,6 @@ func (s *SSHWebSocketSession) ReadFromWebSocket() {
 			}
 		}
 	}
-}
-
-func (s *SSHWebSocketSession) Read(p []byte) (n int, err error) {
-	return 0, io.EOF
 }
 
 func (s *SSHWebSocketSession) Write(p []byte) (n int, err error) {

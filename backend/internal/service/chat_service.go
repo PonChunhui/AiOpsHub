@@ -11,6 +11,7 @@ import (
 	"github.com/aiops/AiOpsHub/backend/internal/repository"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 )
 
 func truncateContent(content string, maxLen int) string {
@@ -23,6 +24,17 @@ func truncateContent(content string, maxLen int) string {
 func toJSON(v interface{}) string {
 	arr, _ := json.Marshal(v)
 	return string(arr)
+}
+
+type RuntimeConfig struct {
+	Model          string
+	Temperature    float64
+	MaxTokens      int
+	EnableRAG      bool
+	RAGTopK        int
+	RAGThreshold   float64
+	EnabledTools   []string
+	EnableThinking bool
 }
 
 type ChatService struct {
@@ -344,7 +356,156 @@ func (s *ChatService) StreamSendMessage(ctx context.Context, sessionID, content 
 }
 
 func (s *ChatService) StreamSendMessageWithEvents(ctx context.Context, sessionID, content string, enableThinking bool) (<-chan *model.AgentEvent, *model.ChatMessage, []map[string]interface{}, error) {
-	return s.SendMessageStream(ctx, sessionID, content)
+	defaultConfig := RuntimeConfig{
+		Model:          viper.GetString("llm.model"),
+		Temperature:    viper.GetFloat64("llm.temperature"),
+		MaxTokens:      viper.GetInt("llm.max_tokens"),
+		EnableRAG:      s.enableRAG,
+		RAGTopK:        3,
+		RAGThreshold:   0.5,
+		EnabledTools:   []string{},
+		EnableThinking: enableThinking,
+	}
+	return s.SendMessageStreamWithConfig(ctx, sessionID, content, defaultConfig)
+}
+
+func (s *ChatService) SendMessageStreamWithConfig(ctx context.Context, sessionID, content string, config RuntimeConfig) (<-chan *model.AgentEvent, *model.ChatMessage, []map[string]interface{}, error) {
+	logger.Info(fmt.Sprintf("=== SendMessageStreamWithConfig START: session=%s, model=%s, temp=%.2f ===", sessionID, config.Model, config.Temperature))
+
+	eventChan := make(chan *model.AgentEvent, 100)
+	var ragReferences []map[string]interface{}
+
+	go func() {
+		defer close(eventChan)
+
+		// 1. 获取会话
+		session, err := s.repo.GetSessionByID(sessionID)
+		if err != nil {
+			eventChan <- model.NewErrorEvent("ChatService", fmt.Sprintf("获取会话失败: %v", err), 500)
+			return
+		}
+
+		// 2. 获取历史消息
+		history, err := s.repo.GetRecentMessages(sessionID, s.maxCtx)
+		if err != nil {
+			logger.Error(fmt.Sprintf("获取历史消息失败: %v", err))
+		}
+
+		// 3. RAG知识检索（根据配置）
+		var knowledgeContext string
+
+		if config.EnableRAG && s.ragSvc != nil {
+			searchResults, err := s.ragSvc.SearchKnowledgeWithConfig(ctx, content, config.RAGTopK, config.RAGThreshold)
+			if err == nil && len(searchResults) > 0 {
+				logger.Info(fmt.Sprintf("RAG检索成功，找到%d个文档 (TopK=%d, Threshold=%.2f)", len(searchResults), config.RAGTopK, config.RAGThreshold))
+
+				for _, result := range searchResults {
+					ragReferences = append(ragReferences, map[string]interface{}{
+						"id":       result.Document.ID,
+						"title":    result.Document.Title,
+						"doc_type": result.Document.DocType,
+						"score":    result.Score,
+					})
+				}
+
+				knowledgeContext, _ = s.ragSvc.GetContextForQuery(ctx, content, 1000)
+
+				if len(ragReferences) > 0 {
+					eventChan <- model.NewRagReferencesEvent(ragReferences)
+				}
+			}
+		}
+
+		// 4. 创建用户消息
+		userMessage := &model.ChatMessage{
+			SessionID: sessionID,
+			Role:      "user",
+			Content:   content,
+		}
+		if err := s.repo.CreateMessage(userMessage); err != nil {
+			eventChan <- model.NewErrorEvent("ChatService", fmt.Sprintf("保存用户消息失败: %v", err), 500)
+			return
+		}
+
+		// 发送用户消息事件
+		eventChan <- model.NewUserMessageEvent(sessionID, "user", content)
+
+		// 5. Agent路由选择
+		sessionContext := s.buildSessionContext(history, knowledgeContext)
+		agentInstance, routingLog, err := s.masterRouter.Route(ctx, content, sessionContext)
+		if err != nil {
+			eventChan <- model.NewErrorEvent("ChatService", fmt.Sprintf("路由失败: %v", err), 500)
+			return
+		}
+
+		logger.Info(fmt.Sprintf("✅ 选中Agent: %s (置信度 %.2f)", routingLog.SelectedAgentID, routingLog.Confidence))
+
+		// 保存路由日志
+		if err := s.routingLogRepo.Create(routingLog); err != nil {
+			logger.Error(fmt.Sprintf("保存路由日志失败: %v", err))
+		}
+
+		// 6. 应用运行时配置到Agent实例
+		if err := agentInstance.ApplyRuntimeConfig(ctx, config, session.Model); err != nil {
+			logger.Error(fmt.Sprintf("应用运行时配置失败: %v", err))
+			// 配置失败不影响继续执行，使用默认配置
+		}
+
+		// 7. Agent执行（全流程流式）
+		agentEventChan, toolCallRecords, err := agentInstance.ExecuteStream(ctx, content, history)
+		if err != nil {
+			eventChan <- model.NewErrorEvent("ChatService", fmt.Sprintf("Agent执行失败: %v", err), 500)
+			return
+		}
+
+		// 8. 转发Agent事件
+		var fullContent strings.Builder
+		for event := range agentEventChan {
+			if event.Type == model.EventContentChunk {
+				if data, ok := event.Data.(model.ContentChunkEventData); ok {
+					fullContent.WriteString(data.Content)
+				}
+			}
+			eventChan <- event
+		}
+
+		// 9. 保存工具调用日志
+		for _, record := range toolCallRecords {
+			callLog := &model.ToolCallLog{
+				ID:        uuid.New().String(),
+				SessionID: sessionID,
+				ToolName:  record.ToolName,
+				Arguments: toJSON(record.Arguments),
+				Result:    record.Result,
+				Success:   record.Success,
+				Duration:  record.Duration,
+			}
+			if !record.Success {
+				callLog.ErrorMessage = record.Result
+			}
+			if err := s.toolCallLogRepo.Create(callLog); err != nil {
+				logger.Error(fmt.Sprintf("保存工具调用日志失败: %v", err))
+			}
+		}
+
+		// 10. 保存AI消息
+		aiMessage := &model.ChatMessage{
+			SessionID:     sessionID,
+			Role:          "assistant",
+			Content:       fullContent.String(),
+			AgentID:       routingLog.SelectedAgentID,
+			RAGReferences: toJSON(ragReferences),
+		}
+		if err := s.repo.CreateMessage(aiMessage); err != nil {
+			logger.Error(fmt.Sprintf("保存AI消息失败: %v", err))
+		} else {
+			logger.Info(fmt.Sprintf("AI消息已保存: ID=%s, ContentLen=%d", aiMessage.ID, fullContent.Len()))
+		}
+
+		logger.Info(fmt.Sprintf("=== SendMessageStreamWithConfig完成 ==="))
+	}()
+
+	return eventChan, nil, ragReferences, nil
 }
 
 func (s *ChatService) buildSessionContext(history []model.ChatMessage, knowledgeContext string) string {

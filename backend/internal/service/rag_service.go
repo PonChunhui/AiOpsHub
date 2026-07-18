@@ -201,6 +201,48 @@ func (r *RAGService) SearchKnowledge(ctx context.Context, query string, topK int
 	return results, nil
 }
 
+// SearchKnowledgeWithConfig 使用配置参数进行知识检索
+// 支持自定义TopK和Threshold参数
+func (r *RAGService) SearchKnowledgeWithConfig(ctx context.Context, query string, topK int, threshold float64) ([]SearchResult, error) {
+	logger.Info(fmt.Sprintf("SearchKnowledgeWithConfig: query='%s', topK=%d, threshold=%.2f", query, topK, threshold))
+
+	// 设置默认值
+	if topK <= 0 {
+		topK = 5
+	}
+	if threshold <= 0 {
+		threshold = 0.5
+	}
+
+	// 使用标准的SearchKnowledge方法获取结果
+	allResults, err := r.SearchKnowledge(ctx, query, topK)
+	if err != nil {
+		return nil, err
+	}
+
+	// 根据自定义阈值过滤结果
+	filteredResults := []SearchResult{}
+	for _, result := range allResults {
+		if result.Score >= threshold {
+			filteredResults = append(filteredResults, result)
+			logger.Debug(fmt.Sprintf("Result passed threshold: title=%s, score=%.4f >= %.2f",
+				result.Document.Title, result.Score, threshold))
+		} else {
+			logger.Debug(fmt.Sprintf("Result filtered by threshold: title=%s, score=%.4f < %.2f",
+				result.Document.Title, result.Score, threshold))
+		}
+	}
+
+	if len(filteredResults) > 0 {
+		logger.Info(fmt.Sprintf("Found %d relevant results (threshold=%.2f, requestedTopK=%d)",
+			len(filteredResults), threshold, topK))
+	} else {
+		logger.Info(fmt.Sprintf("No results passed threshold=%.2f", threshold))
+	}
+
+	return filteredResults, nil
+}
+
 // searchInMemory 内存知识库检索（降级/兜底方案）
 // 当Milvus向量数据库不可用时，使用内置的硬编码知识库进行检索
 //

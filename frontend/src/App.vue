@@ -1,5 +1,9 @@
 <template>
-  <el-container class="layout-container" v-if="route.path !== '/login' && route.path !== '/register'">
+  <!-- 终端页面：全屏显示，无侧边栏和头部 -->
+  <router-view v-if="isTerminalPage" />
+  
+  <!-- 其他页面：带侧边栏和头部 -->
+  <el-container class="layout-container" v-else-if="route.path !== '/login' && route.path !== '/register'">
     <el-aside width="200px" class="sidebar-container">
       <div class="sidebar-logo">AiOpsHub</div>
       
@@ -108,6 +112,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+const isTerminalPage = computed(() => route.path.startsWith('/host-terminal/'))
 const activeMenu = computed(() => route.path)
 const username = computed(() => authStore.username || '未登录')
 

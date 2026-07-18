@@ -318,6 +318,10 @@ func (e *EinoLLM) GetChatModel() model.ChatModel {
 	return e.chatModel
 }
 
+func (e *EinoLLM) GetConfig() EinoLLMConfig {
+	return e.config
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

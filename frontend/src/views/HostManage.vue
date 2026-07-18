@@ -263,22 +263,17 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="terminalDialogVisible" title="SSH终端" width="800px" top="5vh">
-      <div class="terminal-container" ref="terminalContainer">
-        <div class="terminal-output" ref="terminalOutput"></div>
-      </div>
-      <template #footer>
-        <el-button @click="closeTerminal">关闭</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Upload, Monitor } from '@element-plus/icons-vue'
 import api from '@/api'
+
+const router = useRouter()
 
 const groupTree = ref<any[]>([])
 const groupTreeSelect = computed(() => {
@@ -325,12 +320,6 @@ const batchImportForm = ref({
   group_id: '',
   file: null as any
 })
-
-const terminalDialogVisible = ref(false)
-const terminalContainer = ref()
-const terminalOutput = ref()
-const currentTerminalHost = ref<any>(null)
-const wsConnection = ref<any>(null)
 
 const loadGroupTree = async () => {
   try {
@@ -609,49 +598,8 @@ const testConnection = async (host: any) => {
 }
 
 const openTerminal = (host: any) => {
-  currentTerminalHost.value = host
-  terminalDialogVisible.value = true
-
-  setTimeout(() => {
-    connectWebSocket(host)
-  }, 100)
-}
-
-const connectWebSocket = (host: any) => {
-  const token = localStorage.getItem('token')
-  const wsUrl = `ws://localhost:8080/ws/ssh/${host.id}?token=${token}`
-
-  wsConnection.value = new WebSocket(wsUrl)
-
-  wsConnection.value.onopen = () => {
-    terminalOutput.value.innerHTML += '<div style="color: green;">已连接到主机: ' + host.name + '</div>'
-  }
-
-  wsConnection.value.onmessage = (event: any) => {
-    const data = JSON.parse(event.data)
-    if (data.type === 'data') {
-      terminalOutput.value.innerHTML += '<pre>' + data.data + '</pre>'
-    } else if (data.type === 'error') {
-      terminalOutput.value.innerHTML += '<div style="color: red;">错误: ' + data.data + '</div>'
-    }
-  }
-
-  wsConnection.value.onerror = (error: any) => {
-    terminalOutput.value.innerHTML += '<div style="color: red;">WebSocket连接错误</div>'
-  }
-
-  wsConnection.value.onclose = () => {
-    terminalOutput.value.innerHTML += '<div style="color: gray;">连接已关闭</div>'
-  }
-}
-
-const closeTerminal = () => {
-  if (wsConnection.value) {
-    wsConnection.value.close()
-    wsConnection.value = null
-  }
-  terminalDialogVisible.value = false
-  terminalOutput.value.innerHTML = ''
+  const route = router.resolve(`/host-terminal/${host.id}`)
+  window.open(route.href, '_blank')
 }
 
 const getStatusType = (status: string) => {
@@ -699,25 +647,4 @@ onMounted(() => {
   gap: 4px;
 }
 
-.terminal-container {
-  width: 100%;
-  height: 500px;
-  background: #1e1e1e;
-  color: #ffffff;
-  padding: 10px;
-  border-radius: 4px;
-}
-
-.terminal-output {
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  white-space: pre-wrap;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.terminal-output pre {
-  margin: 0;
-  white-space: pre-wrap;
-}
 </style>

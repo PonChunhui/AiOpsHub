@@ -54,9 +54,16 @@ type CreateSessionRequest struct {
 
 // SendMessageRequest 发送消息请求结构
 type SendMessageRequest struct {
-	SessionID      string `json:"session_id" binding:"required"` // 会话ID
-	Content        string `json:"content" binding:"required"`    // 消息内容
-	EnableThinking bool   `json:"enable_thinking"`               // 是否启用思考过程显示（可选，默认false）
+	SessionID      string   `json:"session_id" binding:"required"` // 会话ID
+	Content        string   `json:"content" binding:"required"`    // 消息内容
+	EnableThinking bool     `json:"enable_thinking"`               // 是否启用思考过程显示（可选，默认false）
+	Model          string   `json:"model"`                         // 模型选择
+	Temperature    *float64 `json:"temperature"`                   // Temperature参数
+	MaxTokens      *int     `json:"max_tokens"`                    // 最大token数
+	EnableRAG      *bool    `json:"enable_rag"`                    // 是否启用RAG
+	RAGTopK        *int     `json:"rag_top_k"`                     // RAG检索数量
+	RAGThreshold   *float64 `json:"rag_threshold"`                 // RAG相似度阈值
+	EnabledTools   []string `json:"enabled_tools"`                 // 启用的工具ID列表
 }
 
 // CreateSession 创建新的对话会话
@@ -196,12 +203,58 @@ func (h *ChatHandler) SendMessageStreamWithEvents(c *gin.Context) {
 		return
 	}
 
-	// 调用Service层，传递enable_thinking参数
-	eventChan, _, ragReferences, err := h.chatService.StreamSendMessageWithEvents(
+	// 构建运行时配置
+	runtimeConfig := service.RuntimeConfig{
+		EnableThinking: req.EnableThinking,
+	}
+
+	// 应用模型配置
+	if req.Model != "" {
+		runtimeConfig.Model = req.Model
+	}
+
+	// 应用Temperature配置
+	if req.Temperature != nil {
+		runtimeConfig.Temperature = *req.Temperature
+	}
+
+	// 应用MaxTokens配置
+	if req.MaxTokens != nil {
+		runtimeConfig.MaxTokens = *req.MaxTokens
+	}
+
+	// 应用RAG配置
+	if req.EnableRAG != nil {
+		runtimeConfig.EnableRAG = *req.EnableRAG
+	}
+	if req.RAGTopK != nil {
+		runtimeConfig.RAGTopK = *req.RAGTopK
+	}
+	if req.RAGThreshold != nil {
+		runtimeConfig.RAGThreshold = *req.RAGThreshold
+	}
+
+	// 应用工具配置
+	if len(req.EnabledTools) > 0 {
+		runtimeConfig.EnabledTools = req.EnabledTools
+	}
+
+	// 记录配置参数（用于调试）
+	logger.Info(fmt.Sprintf("SendMessageStreamWithEvents配置参数: Model=%s, Temperature=%.2f, MaxTokens=%d, EnableRAG=%v, RAGTopK=%d, RAGThreshold=%.2f, EnabledTools=%v",
+		runtimeConfig.Model,
+		runtimeConfig.Temperature,
+		runtimeConfig.MaxTokens,
+		runtimeConfig.EnableRAG,
+		runtimeConfig.RAGTopK,
+		runtimeConfig.RAGThreshold,
+		runtimeConfig.EnabledTools))
+
+	// 调用Service层，传递运行时配置
+	eventChan, _, ragReferences, err := h.chatService.SendMessageStreamWithConfig(
 		c.Request.Context(),
 		req.SessionID,
 		req.Content,
-		req.EnableThinking, // 传递深度思考开关
+		runtimeConfig,
 	)
 	if err != nil {
 		logger.Error(fmt.Sprintf("流式发送消息失败: %v", err))

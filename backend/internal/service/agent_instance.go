@@ -10,6 +10,7 @@ import (
 	"github.com/aiops/AiOpsHub/backend/internal/model"
 	"github.com/aiops/AiOpsHub/backend/pkg/llm"
 	"github.com/aiops/AiOpsHub/backend/pkg/logger"
+	"github.com/spf13/viper"
 )
 
 type AgentInstance struct {
@@ -358,4 +359,116 @@ func (a *AgentInstance) parseToolCalls(text string) []ToolCall {
 	}
 
 	return calls
+}
+
+// ApplyRuntimeConfig 应用运行时配置到Agent实例
+// 根据配置动态创建LLM实例并过滤可用工具
+func (a *AgentInstance) ApplyRuntimeConfig(ctx context.Context, config RuntimeConfig, sessionModel string) error {
+	logger.Info(fmt.Sprintf("ApplyRuntimeConfig: model=%s, temp=%.2f, maxTokens=%d, tools=%v",
+		config.Model, config.Temperature, config.MaxTokens, config.EnabledTools))
+
+	// 1. 根据配置创建新的LLM实例
+	if config.Model != "" {
+		newLLM, err := a.createDynamicLLM(config, sessionModel)
+		if err != nil {
+			logger.Error(fmt.Sprintf("创建动态LLM失败: %v", err))
+			return err
+		}
+		a.llm = newLLM
+		logger.Info(fmt.Sprintf("成功应用动态LLM配置: model=%s", config.Model))
+	}
+
+	// 2. 根据配置过滤可用工具
+	if len(config.EnabledTools) > 0 {
+		a.filterAvailableTools(config.EnabledTools)
+		logger.Info(fmt.Sprintf("成功过滤可用工具，从%d个减少到%d个",
+			len(a.AgentModel.MCPServerIDs), len(a.AvailableTools)))
+	}
+
+	return nil
+}
+
+// createDynamicLLM 创建动态配置的LLM实例
+func (a *AgentInstance) createDynamicLLM(config RuntimeConfig, defaultModel string) (*llm.EinoLLM, error) {
+	model := config.Model
+	if model == "" {
+		model = defaultModel
+		if model == "" {
+			model = viper.GetString("llm.model")
+			if model == "" {
+				model = "qwen-turbo"
+			}
+		}
+	}
+
+	temperature := config.Temperature
+	if temperature == 0 {
+		temperature = viper.GetFloat64("llm.temperature")
+		if temperature == 0 {
+			temperature = 0.7
+		}
+	}
+
+	maxTokens := config.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = viper.GetInt("llm.max_tokens")
+		if maxTokens == 0 {
+			maxTokens = 4096
+		}
+	}
+
+	// 从全局配置中获取provider、APIKey和BaseURL
+	provider := viper.GetString("llm.provider")
+	if provider == "" {
+		provider = "aliyun_bailian"
+	}
+
+	apiKey := viper.GetString("llm.api_key")
+	baseURL := viper.GetString("llm.base_url")
+
+	llmConfig := llm.EinoLLMConfig{
+		Model:       model,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
+		Provider:    provider,
+		APIKey:      apiKey,
+		BaseURL:     baseURL,
+	}
+
+	newLLM, err := llm.NewEinoLLM(llmConfig)
+	if err != nil {
+		return nil, fmt.Errorf("创建LLM实例失败: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("创建动态LLM: model=%s, temp=%.2f, maxTokens=%d, provider=%s",
+		model, temperature, maxTokens, provider))
+
+	return newLLM, nil
+}
+
+// filterAvailableTools 根据配置过滤可用工具
+func (a *AgentInstance) filterAvailableTools(enabledToolIDs []string) {
+	if len(enabledToolIDs) == 0 {
+		return
+	}
+
+	filteredTools := []model.Tool{}
+	for _, tool := range a.AvailableTools {
+		enabled := false
+		for _, toolID := range enabledToolIDs {
+			if tool.ID == toolID {
+				enabled = true
+				break
+			}
+		}
+
+		if enabled {
+			filteredTools = append(filteredTools, tool)
+			logger.Debug(fmt.Sprintf("工具 %s (ID=%s) 已启用", tool.Name, tool.ID))
+		} else {
+			logger.Debug(fmt.Sprintf("工具 %s (ID=%s) 已禁用", tool.Name, tool.ID))
+		}
+	}
+
+	a.AvailableTools = filteredTools
 }

@@ -88,6 +88,12 @@ const router = createRouter({
       name: 'host-manage',
       component: () => import('@/views/HostManage.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/host-terminal/:id',
+      name: 'host-terminal',
+      component: () => import('@/views/Terminal.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
