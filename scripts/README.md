@@ -20,8 +20,6 @@ scripts/
 | 脚本 | 说明 | 使用方式 |
 |------|------|---------|
 | `init-db.sql` | 数据库初始化SQL | `psql -f setup/init-db.sql` |
-| `init-temporal-db.sh` | Temporal数据库初始化 | `./setup/init-temporal-db.sh` |
-| `start-temporal.sh` | Temporal Server启动 | `./setup/start-temporal.sh` |
 
 ## 💻 Dev脚本
 
@@ -55,7 +53,6 @@ scripts/
 | 脚本 | 说明 | 使用方式 |
 |------|------|---------|
 | `system.sh` | 系统部署脚本 | `./deployment/system.sh` |
-| `start-temporal-dev.sh` | Temporal开发环境 | `./deployment/start-temporal-dev.sh` |
 
 ## 🔙 Backend专用脚本
 
@@ -95,13 +92,7 @@ scripts/
 
 ### 初始化开发环境
 ```bash
-# 1. 初始化数据库
-./scripts/setup/init-db.sql
-
-# 2. 启动Temporal
-./scripts/setup/start-temporal.sh
-
-# 3. 启动开发环境
+# 1. 启动开发环境
 ./scripts/dev/start-dev.sh
 ```
 

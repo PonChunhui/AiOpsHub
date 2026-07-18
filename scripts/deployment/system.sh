@@ -75,15 +75,11 @@ start_dependencies() {
     docker-compose up -d postgres redis
     sleep 5
     
-    docker-compose up -d temporal-server
-    sleep 10
-    
     cd "$PROJECT_DIR"
     
     log_info "依赖服务启动完成"
     log_info "  - PostgreSQL: localhost:5432"
     log_info "  - Redis: localhost:6379"
-    log_info "  - Temporal UI: http://localhost:8080"
 }
 
 build_backend() {
@@ -95,13 +91,11 @@ build_backend() {
     go mod tidy
     
     go build -o bin/api-server cmd/api-server/main.go
-    go build -o bin/temporal-worker cmd/temporal-worker/main.go
     
     cd "$PROJECT_DIR"
     
     log_info "后端构建完成"
     log_info "  - api-server: backend/bin/api-server"
-    log_info "  - temporal-worker: backend/bin/temporal-worker"
 }
 
 start_services() {
@@ -121,27 +115,10 @@ start_services() {
         fi
     fi
     
-    if [ -f "$PID_DIR/temporal-worker.pid" ]; then
-        OLD_PID=$(cat "$PID_DIR/temporal-worker.pid")
-        if kill -0 "$OLD_PID" 2>/dev/null; then
-            log_warn "Temporal Worker 已在运行 (PID: $OLD_PID)"
-        else
-            rm -f "$PID_DIR/temporal-worker.pid"
-        fi
-    fi
-    
     if [ ! -f "$PID_DIR/api-server.pid" ]; then
         ./bin/api-server &
         echo $! > "$PID_DIR/api-server.pid"
         log_info "API Server 启动完成 (PID: $(cat $PID_DIR/api-server.pid))"
-    fi
-    
-    sleep 3
-    
-    if [ ! -f "$PID_DIR/temporal-worker.pid" ]; then
-        ./bin/temporal-worker &
-        echo $! > "$PID_DIR/temporal-worker.pid"
-        log_info "Temporal Worker 启动完成 (PID: $(cat $PID_DIR/temporal-worker.pid))"
     fi
     
     cd "$PROJECT_DIR"
@@ -166,17 +143,6 @@ show_status() {
         echo "  API Server: ${YELLOW}未启动${NC}"
     fi
     
-    if [ -f "$PID_DIR/temporal-worker.pid" ]; then
-        PID=$(cat "$PID_DIR/temporal-worker.pid")
-        if kill -0 "$PID" 2>/dev/null; then
-            echo "  Temporal Worker: ${GREEN}运行中${NC} (PID: $PID)"
-        else
-            echo "  Temporal Worker: ${RED}已停止${NC}"
-        fi
-    else
-        echo "  Temporal Worker: ${YELLOW}未启动${NC}"
-    fi
-    
     echo ""
     
     cd deployments
@@ -194,13 +160,6 @@ stop_services() {
         kill "$PID" 2>/dev/null || true
         rm -f "$PID_DIR/api-server.pid"
         log_info "API Server 已停止"
-    fi
-    
-    if [ -f "$PID_DIR/temporal-worker.pid" ]; then
-        PID=$(cat "$PID_DIR/temporal-worker.pid")
-        kill "$PID" 2>/dev/null || true
-        rm -f "$PID_DIR/temporal-worker.pid"
-        log_info "Temporal Worker 已停止"
     fi
     
     log_info "所有服务已停止"

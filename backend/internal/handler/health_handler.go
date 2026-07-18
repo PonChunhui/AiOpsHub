@@ -53,7 +53,6 @@ func LivenessHandler(c *gin.Context) {
 func ReadinessHandler(c *gin.Context) {
 	services := make(map[string]bool)
 
-	services["temporal"] = checkTemporalConnection()
 	services["redis"] = checkRedisConnection()
 	services["database"] = checkDatabaseConnection()
 
@@ -76,10 +75,6 @@ func ReadinessHandler(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusServiceUnavailable, response)
 	}
-}
-
-func checkTemporalConnection() bool {
-	return true
 }
 
 func checkRedisConnection() bool {

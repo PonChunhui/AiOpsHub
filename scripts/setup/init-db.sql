@@ -421,7 +421,7 @@ BEGIN
     RAISE NOTICE '创建索引数量：%', (SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public');
 END $$;
 -- ============================================
--- Temporal相关表（新增）
+-- Workflow相关表
 -- ============================================
 
 -- Workflow定义表
@@ -455,7 +455,7 @@ CREATE TABLE workflow_definitions (
 CREATE TABLE workflow_executions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id UUID REFERENCES workflow_definitions(id),
-    workflow_run_id VARCHAR(100) UNIQUE,       -- Temporal Run ID
+    workflow_run_id VARCHAR(100) UNIQUE,
     
     -- 执行状态
     status VARCHAR(50) NOT NULL,               -- running/success/failed/cancelled
@@ -475,11 +475,7 @@ CREATE TABLE workflow_executions (
     
     -- 时间
     started_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    
-    -- Temporal关联
-    temporal_workflow_id VARCHAR(100),         -- Temporal Workflow ID
-    temporal_run_id VARCHAR(100)               -- Temporal Run ID
+    completed_at TIMESTAMP
 );
 
 -- Agent配置表（适配langchaingo）
@@ -571,10 +567,7 @@ CREATE TABLE activity_executions (
     
     -- 时间
     started_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    
-    -- Temporal关联
-    temporal_activity_id VARCHAR(100)
+    completed_at TIMESTAMP
 );
 
 -- 知识库表（更新）
@@ -590,7 +583,6 @@ CREATE INDEX idx_workflow_def_type ON workflow_definitions(workflow_type);
 CREATE INDEX idx_workflow_def_enabled ON workflow_definitions(enabled);
 CREATE INDEX idx_workflow_exec_status ON workflow_executions(status);
 CREATE INDEX idx_workflow_exec_workflow ON workflow_executions(workflow_id);
-CREATE INDEX idx_workflow_exec_temporal ON workflow_executions(temporal_workflow_id);
 CREATE INDEX idx_agent_config_llm ON agent_configs(llm_provider, llm_model);
 CREATE INDEX idx_agent_config_enabled ON agent_configs(enabled);
 CREATE INDEX idx_tool_registry_category ON tool_registry(category);
@@ -658,15 +650,4 @@ INSERT INTO tool_registry (name, category, tool_type, description, parameters_sc
 
 ('kubernetes_operator', 'execution', 'kubernetes', '执行Kubernetes操作',
  '{"type": "object", "properties": {"operation": {"type": "string"}}}', 'tools.KubernetesOperator');
-
--- ============================================
--- Temporal数据库创建（需要在Temporal PostgreSQL中执行）
--- ============================================
-
--- 注意：Temporal Server会自动创建其所需的数据库表
--- 这里仅创建业务相关的表
-
--- Temporal数据库（需要单独创建）
--- CREATE DATABASE temporal;
--- GRANT ALL PRIVILEGES ON DATABASE temporal TO temporal;
 

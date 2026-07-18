@@ -8,12 +8,6 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Temporal Server监控
-  - job_name: 'temporal-server'
-    static_configs:
-      - targets: ['temporal-server:7233']
-    metrics_path: '/metrics'
-
   # PostgreSQL监控（需要postgres_exporter）
   - job_name: 'postgres'
     static_configs:

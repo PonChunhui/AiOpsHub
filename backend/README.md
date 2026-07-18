@@ -5,7 +5,6 @@ Go backend service for AiOpsHub - Intelligent Operations Platform
 ## Architecture
 
 - **API Server**: RESTful API service (port 8080)
-- **Temporal Worker**: Workflow and activity execution engine
 
 ## Quick Start
 
@@ -14,7 +13,6 @@ Go backend service for AiOpsHub - Intelligent Operations Platform
 - Go 1.24+
 - PostgreSQL 14+
 - Redis 7+
-- Temporal Server 1.20+
 
 ### Run API Server
 
@@ -29,16 +27,6 @@ go build -o bin/api-server ./cmd/api-server
 ./bin/api-server
 ```
 
-### Run Temporal Worker
-
-```bash
-# Build
-go build -o bin/temporal-worker ./cmd/temporal-worker
-
-# Run
-./bin/temporal-worker
-```
-
 ## Project Structure
 
 ```
@@ -51,7 +39,6 @@ backend/
 │   ├── handler/          # HTTP handlers
 │   ├── middleware/       # HTTP middlewares
 │   ├── model/            # Data models
-│   ├── temporal/         # Temporal workflows and activities
 │   ├── repository/       # Data access layer
 │   └── service/           # Business logic layer
 ├── pkg/                   # Public packages
@@ -79,8 +66,6 @@ backend/
 - [x] Logger
 - [x] HTTP middleware
 - [x] Basic handlers
-- [x] Temporal client and worker
-- [x] Basic workflows and activities
 - [ ] Database integration (GORM)
 - [ ] Langchaingo Agent implementation
 - [ ] Full API implementation
@@ -92,7 +77,6 @@ backend/
 - **Web Framework**: Gin
 - **Configuration**: Viper
 - **Logging**: Zap
-- **Workflow Engine**: Temporal
 - **Agent Framework**: langchaingo (planned)
 - **Database**: PostgreSQL with GORM
 - **Cache**: Redis

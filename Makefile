@@ -5,7 +5,6 @@ all: build test
 build:
 	@echo "Building backend binaries..."
 	cd backend && go build -o bin/api-server cmd/api-server/main.go
-	cd backend && go build -o bin/temporal-worker cmd/temporal-worker/main.go
 	@echo "Build complete!"
 
 test:
@@ -17,10 +16,7 @@ run-deps:
 	@echo "Starting dependencies with Docker Compose..."
 	cd deployments && docker-compose up -d postgres redis
 	@sleep 5
-	cd deployments && docker-compose up -d temporal-server
-	@sleep 10
 	@echo "Dependencies started!"
-	@echo "Temporal UI: http://localhost:8080"
 	@echo "PostgreSQL: localhost:5432"
 	@echo "Redis: localhost:6379"
 
@@ -28,14 +24,9 @@ run-api:
 	@echo "Starting API server..."
 	cd backend && ./bin/api-server
 
-run-worker:
-	@echo "Starting Temporal worker..."
-	cd backend && ./bin/temporal-worker
-
 run-all: run-deps
 	@echo "Starting all services..."
 	@cd backend && ./bin/api-server &
-	@cd backend && ./bin/temporal-worker &
 	@echo "All services running!"
 
 deploy-full:
@@ -44,7 +35,6 @@ deploy-full:
 	@sleep 15
 	@echo "Full stack deployed!"
 	@echo "Services available:"
-	@echo "  - Temporal UI: http://localhost:8080"
 	@echo "  - Grafana: http://localhost:3000"
 	@echo "  - Prometheus: http://localhost:9090"
 	@echo "  - PostgreSQL: localhost:5432"
@@ -63,7 +53,7 @@ clean-deps:
 
 clean:
 	@echo "Cleaning binaries..."
-	rm -f backend/bin/api-server backend/bin/temporal-worker
+	rm -f backend/bin/api-server
 	@echo "Clean complete!"
 
 install-deps:
@@ -82,9 +72,8 @@ help:
 	@echo "  all          Build and test (default)"
 	@echo "  build        Build backend binaries"
 	@echo "  test         Run backend tests"
-	@echo "  run-deps     Start dependencies (PostgreSQL, Redis, Temporal)"
+	@echo "  run-deps     Start dependencies (PostgreSQL, Redis)"
 	@echo "  run-api      Start API server"
-	@echo "  run-worker   Start Temporal worker"
 	@echo "  run-all      Start all services"
 	@echo "  deploy-full  Deploy full stack with Docker Compose"
 	@echo "  stop-deps    Stop Docker Compose dependencies"
@@ -101,7 +90,7 @@ help:
 	@echo "  2. Set llm.api_key to your OpenAI API key"
 	@echo "  3. make run-deps"
 	@echo "  4. make build"
-	@echo "  5. make run-api & make run-worker"
+	@echo "  5. make run-api"
 
 dev: install-deps build test run-deps
 	@echo "Development environment ready!"

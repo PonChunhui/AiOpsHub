@@ -10,7 +10,6 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /build/bin/api-server ./cmd/api-server
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /build/bin/temporal-worker ./cmd/temporal-worker
 
 FROM alpine:latest
 
@@ -19,7 +18,6 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /build/bin/api-server /app/
-COPY --from=builder /build/bin/temporal-worker /app/
 COPY --from=builder /build/configs /app/configs
 
 ENV TZ=Asia/Shanghai

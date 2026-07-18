@@ -12,7 +12,6 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
-	Temporal TemporalConfig
 	LLM      LLMConfig
 	Milvus   MilvusConfig
 	Chat     ChatConfig
@@ -44,12 +43,6 @@ type RedisConfig struct {
 	Port     int
 	Password string
 	DB       int
-}
-
-type TemporalConfig struct {
-	Host      string
-	Port      int
-	Namespace string
 }
 
 type LLMConfig struct {
@@ -111,10 +104,6 @@ func Init() error {
 	viper.SetDefault("redis.password", "")
 	viper.SetDefault("redis.db", 0)
 
-	viper.SetDefault("temporal.host", "localhost")
-	viper.SetDefault("temporal.port", 7233)
-	viper.SetDefault("temporal.namespace", "default")
-
 	viper.SetDefault("llm.provider", "openai")
 	viper.SetDefault("llm.model", "gpt-4")
 	viper.SetDefault("llm.temperature", 0.7)
@@ -168,11 +157,6 @@ func GetConfig() *Config {
 			Port:     viper.GetInt("redis.port"),
 			Password: viper.GetString("redis.password"),
 			DB:       viper.GetInt("redis.db"),
-		},
-		Temporal: TemporalConfig{
-			Host:      viper.GetString("temporal.host"),
-			Port:      viper.GetInt("temporal.port"),
-			Namespace: viper.GetString("temporal.namespace"),
 		},
 		LLM: LLMConfig{
 			Provider:    viper.GetString("llm.provider"),

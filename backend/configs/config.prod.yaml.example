@@ -20,11 +20,6 @@ redis:
   password: "change-this-password"
   db: 0
 
-temporal:
-  host: "temporal.production"
-  port: 7233
-  namespace: "production"
-
 llm:
   provider: "openai"
   model: "gpt-4"

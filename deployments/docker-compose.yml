@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL（合并Temporal和业务数据）
+  # PostgreSQL
   postgres:
     image: postgres:15
     container_name: aiops-postgres
@@ -9,44 +9,15 @@ services:
       POSTGRES_USER: aiops
       POSTGRES_PASSWORD: aiops123
       POSTGRES_DB: aiopsdb
-      # Temporal需要的数据库（会自动创建）
-      POSTGRES_MULTIPLE_DATABASES: aiopsdb,temporal,temporal_visibility
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-      - ./scripts/init-temporal-db.sh:/docker-entrypoint-initdb.d/init-temporal-db.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aiops"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - aiops-network
-
-  # Temporal Server（工作流引擎）
-  temporal-server:
-    image: temporalio/server:latest
-    container_name: temporal-server
-    ports:
-      - "7233:7233"   # Temporal Server RPC
-      - "8080:8080"   # Temporal Web UI
-    environment:
-      # 核心配置（修正）
-      - DB=default
-      - DB_DEFAULT=postgresql
-      - DB_POSTGRES_HOST=postgres
-      - DB_POSTGRES_PORT=5432
-      - DB_POSTGRES_USER=aiops
-      - DB_POSTGRES_PWD=aiops123
-      - DB_POSTGRES_DATABASE=temporal
-      # 可选配置
-      - BIND_ON_IP=0.0.0.0
-      - TEMPORAL_CLI_ADDRESS=temporal-server:7233
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - aiops-network
 
@@ -127,7 +98,7 @@ services:
     networks:
       - aiops-network
 
-  # Prometheus（监控Temporal和系统）
+  # Prometheus（监控系统）
   prometheus:
     image: prom/prometheus:v2.45.0
     container_name: aiops-prometheus
@@ -176,49 +147,40 @@ networks:
 # 1. 启动所有服务：
 #    docker-compose up -d
 #
-# 2. 等待Temporal Server初始化（约30秒）：
-#    docker-compose logs -f temporal-server
-#
-# 3. 访问服务：
-#    - Temporal Web UI: http://localhost:8080
+# 2. 访问服务：
 #    - Grafana: http://localhost:3000 (用户admin，密码admin123)
 #    - Prometheus: http://localhost:9090
 #
-# 4. 查看服务状态：
+# 3. 查看服务状态：
 #    docker-compose ps
 #
-# 5. 停止服务：
+# 4. 停止服务：
 #    docker-compose down
 #
-# 6. 清理所有数据（慎用）：
+# 5. 清理所有数据（慎用）：
 #    docker-compose down -v
 #
 # 
 # PostgreSQL数据库说明：
 # -------------------
 # - 主数据库：aiopsdb (AiOpsHub业务数据)
-# - Temporal数据库：自动创建于同一实例（Schema隔离）
 # - 连接信息：
 #   Host: localhost
 #   Port: 5432
 #   User: aiops
 #   Password: aiops123
-#   Database: aiopsdb（业务）/ temporal（Temporal自动创建）
+#   Database: aiopsdb
 #
 # 
 # 生产环境建议：
 # -------------------
-# 1. Temporal和业务数据使用独立PostgreSQL实例
-# 2. 增加备份策略
-# 3. 配置资源限制
-# 4. 启用认证和TLS
+# 1. 增加备份策略
+# 2. 配置资源限制
+# 3. 启用认证和TLS
 #
 # 
 # 仅启动特定服务：
 # -------------------
-# 启动Temporal开发环境：
-#    docker-compose up -d postgres temporal-server
-#
 # 启动向量数据库：
 #    docker-compose up -d etcd minio milvus-standalone
 #

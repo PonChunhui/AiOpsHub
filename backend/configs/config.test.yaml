@@ -20,11 +20,6 @@ redis:
   password: ""
   db: 1
 
-temporal:
-  host: "localhost"
-  port: 7233
-  namespace: "test"
-
 llm:
   provider: "openai"
   model: "gpt-4"
