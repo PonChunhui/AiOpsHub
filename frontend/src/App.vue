@@ -1,6 +1,6 @@
 <template>
-  <!-- 终端页面：全屏显示，无侧边栏和头部 -->
-  <router-view v-if="isTerminalPage" />
+  <!-- 全屏页面：无侧边栏和头部（终端、文件管理） -->
+  <router-view v-if="isFullScreenPage" />
   
   <!-- 其他页面：带侧边栏和头部 -->
   <el-container class="layout-container" v-else-if="route.path !== '/login' && route.path !== '/register'">
@@ -112,7 +112,9 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isTerminalPage = computed(() => route.path.startsWith('/host-terminal/'))
+const isFullScreenPage = computed(() => 
+  route.path.startsWith('/host-terminal/') || route.path.startsWith('/host-file-manage')
+)
 const activeMenu = computed(() => route.path)
 const username = computed(() => authStore.username || '未登录')
 

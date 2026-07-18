@@ -94,6 +94,18 @@ const router = createRouter({
       name: 'host-terminal',
       component: () => import('@/views/Terminal.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/host-file-manage',
+      name: 'host-file-manage',
+      component: () => import('@/views/FileManage.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/host-file-manage/:id',
+      name: 'host-file-manage-host',
+      component: () => import('@/views/FileManage.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

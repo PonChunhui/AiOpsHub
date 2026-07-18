@@ -111,11 +111,15 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="280" fixed="right">
+            <el-table-column label="操作" width="360" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" type="success" @click="openTerminal(row)">
                   <el-icon><Monitor /></el-icon>
                   终端
+                </el-button>
+                <el-button size="small" type="warning" @click="openFileManage(row)">
+                  <el-icon><Folder /></el-icon>
+                  文件
                 </el-button>
                 <el-button size="small" type="info" @click="testConnection(row)">
                   测试
@@ -270,7 +274,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Upload, Monitor } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Upload, Monitor, Folder } from '@element-plus/icons-vue'
 import api from '@/api'
 
 const router = useRouter()
@@ -599,6 +603,11 @@ const testConnection = async (host: any) => {
 
 const openTerminal = (host: any) => {
   const route = router.resolve({ name: 'host-terminal', params: { id: host.id } })
+  window.open(route.href, '_blank')
+}
+
+const openFileManage = (host: any) => {
+  const route = router.resolve({ name: 'host-file-manage-host', params: { id: host.id } })
   window.open(route.href, '_blank')
 }
 

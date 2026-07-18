@@ -56,15 +56,21 @@ func Logger() gin.HandlerFunc {
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		tokenString := ""
+
+		if authHeader != "" {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenString == authHeader {
+				tokenString = strings.TrimPrefix(authHeader, "Token ")
+			}
+		} else if token := c.Query("token"); token != "" {
+			tokenString = token
+		}
+
+		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization token"})
 			c.Abort()
 			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			tokenString = strings.TrimPrefix(authHeader, "Token ")
 		}
 
 		userID, username, role, err := jwtutil.ValidateToken(c.Request.Context(), tokenString)

@@ -274,6 +274,10 @@ func registerRoutes(r *gin.Engine) {
 			hosts.POST("/batch-import", handler.BatchImportHosts)
 			hosts.POST("/batch-delete", handler.BatchDeleteHosts)
 			hosts.POST("/:id/test-connection", handler.TestHostConnection)
+			hosts.GET("/:id/files", handler.ListFiles)
+			hosts.GET("/:id/files/info", handler.GetFileInfo)
+			hosts.POST("/:id/files/upload", handler.UploadFile)
+			hosts.GET("/:id/files/download", handler.DownloadFile)
 		}
 
 		chat := v1.Group("/chat")

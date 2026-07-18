@@ -291,7 +291,24 @@ export const hostApi = {
   batchImportHosts: (formData: FormData): Promise<ApiResponse> =>
     api.post('/hosts/batch-import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   batchDeleteHosts: (ids: string[]): Promise<ApiResponse> => api.post('/hosts/batch-delete', { ids }),
-  testConnection: (id: string): Promise<ApiResponse> => api.post(`/hosts/${id}/test-connection`)
+  testConnection: (id: string): Promise<ApiResponse> => api.post(`/hosts/${id}/test-connection`),
+
+  listFiles: (hostId: string, path?: string): Promise<ApiResponse> =>
+    api.get(`/hosts/${hostId}/files`, { params: { path } }),
+  getFileInfo: (hostId: string, path: string): Promise<ApiResponse> =>
+    api.get(`/hosts/${hostId}/files/info`, { params: { path } }),
+  uploadFile: (hostId: string, remotePath: string, file: File): Promise<ApiResponse> => {
+    const formData = new FormData()
+    formData.append('path', remotePath)
+    formData.append('file', file)
+    return api.post(`/hosts/${hostId}/files/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  downloadFile: (hostId: string, path: string): string => {
+    const token = localStorage.getItem('token')
+    return `/api/v1/hosts/${hostId}/files/download?path=${encodeURIComponent(path)}&token=${token}`
+  }
 }
 
 export default api
