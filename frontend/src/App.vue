@@ -60,7 +60,7 @@
     </el-aside>
     
     <el-container>
-      <el-header class="header-container">
+      <el-header v-if="!noHeaderPage" class="header-container">
         <div class="header-title">
           <el-icon class="header-title-icon"><Cloudy /></el-icon>
           智能运维平台
@@ -81,7 +81,7 @@
         </div>
       </el-header>
       
-      <el-main class="page-container">
+      <el-main class="page-container" :style="noHeaderPage ? 'height: 100vh !important' : ''">
         <router-view />
       </el-main>
     </el-container>
@@ -113,7 +113,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const isFullScreenPage = computed(() => 
-  route.path.startsWith('/host-terminal/') || route.path.startsWith('/host-file-manage')
+  route.path.startsWith('/host-terminal/') || 
+  route.path.startsWith('/host-file-manage')
+)
+const noHeaderPage = computed(() => 
+  route.path === '/ai-assistant'
 )
 const activeMenu = computed(() => route.path)
 const username = computed(() => authStore.username || '未登录')
@@ -139,12 +143,14 @@ const handleLogout = () => {
 
 /* Main content area layout */
 .page-container {
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   height: calc(100vh - var(--header-height)) !important;
 }
 
 .el-main {
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 :deep(.el-aside) {

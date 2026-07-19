@@ -628,7 +628,7 @@ onMounted(() => {
 <style scoped>
 .ai-assistant-tiny-robot {
   display: flex;
-  height: calc(100vh - 60px);
+  height: 100vh;
   background: #fff;
   position: relative;
 }
